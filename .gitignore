@@ -1,0 +1,25 @@
+# Generated firmware and local validation/downloads
+/build/
+/.scratch/
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+*.a
+*.exe
+*.dll
+*.zip
+*.tar.gz
+__pycache__/
+*.pyc
+
+# Editor and host files
+/.vscode/
+/.idea/
+*.swp
+*~
+Thumbs.db
+.DS_Store
