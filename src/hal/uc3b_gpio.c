@@ -51,6 +51,26 @@ bool uc3b_gpio_enable_gpio(Uc3bGpioPin pin)
     return true;
 }
 
+bool uc3b_gpio_select_peripheral(Uc3bGpioPin pin, uint8_t function)
+{
+    volatile avr32_gpio_port_t *port;
+    uint32_t mask;
+    if (!uc3b_gpio_is_valid(pin) || function > 2) {
+        return false;
+    }
+    port = &AVR32_GPIO.port[pin.port];
+    mask = 1UL << pin.pin;
+    port->ierc = mask;
+    port->oderc = mask;
+    port->puerc = mask;
+    if (function & 1) { port->pmr0s = mask; }
+    else { port->pmr0c = mask; }
+    if (function & 2) { port->pmr1s = mask; }
+    else { port->pmr1c = mask; }
+    port->gperc = mask;
+    return true;
+}
+
 bool uc3b_gpio_write(Uc3bGpioPin pin, bool value)
 {
     return value ? uc3b_gpio_set(pin) : uc3b_gpio_clear(pin);

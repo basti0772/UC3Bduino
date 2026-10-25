@@ -94,6 +94,12 @@ __system_timer_vector:
     /* Bare-metal builds do not link the timer; keep a safe weak default. */
 .weak uc3b_system_timer_isr
 .set uc3b_system_timer_isr, __unhandled_interrupt
+    .org 0x108
+.global __uart_vector
+__uart_vector:
+    rjmp uc3b_uart_isr
+.weak uc3b_uart_isr
+.set uc3b_uart_isr, __unhandled_interrupt
 __unhandled_interrupt:
     rjmp .
 .size __exception_vectors, . - __exception_vectors

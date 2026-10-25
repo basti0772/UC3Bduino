@@ -18,6 +18,7 @@ typedef char uc3b_pm_layout_check[
      && __builtin_offsetof(avr32_pm_t, mcctrl) == 0x00
      && __builtin_offsetof(avr32_pm_t, cksel) == 0x04
      && __builtin_offsetof(avr32_pm_t, pbamask) == 0x10
+     && __builtin_offsetof(avr32_pm_t, oscctrl0) == 0x28
      && __builtin_offsetof(avr32_pm_t, poscsr) == 0x54) ? 1 : -1];
 typedef char uc3b_gpio_layout_check[
     (AVR32_GPIO_ADDRESS == 0xFFFF1000UL
@@ -25,6 +26,11 @@ typedef char uc3b_gpio_layout_check[
      && AVR32_GPIO_NUMBER_OF_PINS == 44
      && sizeof(avr32_gpio_port_t) == 0x100
      && __builtin_offsetof(avr32_gpio_port_t, gpers) == 0x04
+     && __builtin_offsetof(avr32_gpio_port_t, gperc) == 0x08
+     && __builtin_offsetof(avr32_gpio_port_t, pmr0s) == 0x14
+     && __builtin_offsetof(avr32_gpio_port_t, pmr0c) == 0x18
+     && __builtin_offsetof(avr32_gpio_port_t, pmr1s) == 0x24
+     && __builtin_offsetof(avr32_gpio_port_t, pmr1c) == 0x28
      && __builtin_offsetof(avr32_gpio_port_t, oders) == 0x44
      && __builtin_offsetof(avr32_gpio_port_t, oderc) == 0x48
      && __builtin_offsetof(avr32_gpio_port_t, ovrs) == 0x54

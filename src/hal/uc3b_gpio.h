@@ -28,6 +28,10 @@ bool uc3b_gpio_is_valid(Uc3bGpioPin pin);
  */
 bool uc3b_gpio_config_output(Uc3bGpioPin pin);
 bool uc3b_gpio_config_input(Uc3bGpioPin pin);
+/* Function A=0, B=1, C=2. Disable GPIO IRQ/output/pull-up, then hand off pad.
+ * Caller must verify that the chosen peripheral exists on this pad.
+ */
+bool uc3b_gpio_select_peripheral(Uc3bGpioPin pin, uint8_t function);
 bool uc3b_gpio_enable_gpio(Uc3bGpioPin pin);
 bool uc3b_gpio_write(Uc3bGpioPin pin, bool value);
 bool uc3b_gpio_set(Uc3bGpioPin pin);

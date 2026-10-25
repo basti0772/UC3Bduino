@@ -33,6 +33,7 @@ SECTIONS
     } > FLASH
 
     __system_timer_vector_offset = __system_timer_vector - __exception_vectors;
+    __uart_vector_offset = __uart_vector - __exception_vectors;
 
     .text ALIGN(4) :
     {
@@ -87,6 +88,9 @@ ASSERT((__exception_vectors & 511) == 0, "EVBA must be 512-byte aligned")
 ASSERT(__system_timer_vector_offset == 0x104, "Unexpected timer vector offset")
 ASSERT((__exception_vectors | __system_timer_vector_offset) == __system_timer_vector,
        "Timer autovector must obey EVBA OR offset")
+ASSERT(__uart_vector_offset == 0x108, "Unexpected UART vector offset")
+ASSERT((__exception_vectors | __uart_vector_offset) == __uart_vector,
+       "UART autovector must obey EVBA OR offset")
 ASSERT((__stack_top__ & 7) == 0, "Stack must be 8-byte aligned")
 ASSERT(__bss_end__ <= __stack_bottom__, "SRAM data overlaps reserved stack")
 ASSERT(__flash_end__ <= ORIGIN(FLASH) + LENGTH(FLASH), "Flash overflow")
