@@ -53,7 +53,7 @@ __main_returned:
 
 /* Instruction entry points, NOT a Cortex-M table of address words.
  * Each architectural exception slot halts at its own address, allowing a
- * debugger to identify the cause. INTC interrupts remain globally masked.
+ * debugger to identify the cause. GM remains set until Arduino timer init.
  * Offsets: AT32UC3B datasheet 32059L, table 6-4 (including unused slots).
  */
 .section .exception_vectors, "ax", @progbits
@@ -87,6 +87,15 @@ __exception_vectors:
     trap_slot 0x60 /* DTLB miss, read */
     trap_slot 0x70 /* DTLB miss, write */
     trap_slot 0x100 /* Supervisor call */
+    .org 0x104
+.global __system_timer_vector
+__system_timer_vector:
+    rjmp uc3b_system_timer_isr
+    /* Bare-metal builds do not link the timer; keep a safe weak default. */
+.weak uc3b_system_timer_isr
+.set uc3b_system_timer_isr, __unhandled_interrupt
+__unhandled_interrupt:
+    rjmp .
 .size __exception_vectors, . - __exception_vectors
 
 /* Give the linker a NOBITS input so old binutils marks the stack allocated. */

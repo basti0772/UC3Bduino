@@ -24,13 +24,15 @@ SECTIONS
         KEEP(*(.reset))
     } > FLASH
 
-    /* Low nine base bits are zero for offsets through 0x100.
-     * Peripheral autovectors are not configured in this stage.
+    /* Low nine base bits are zero for fixed slots and timer stub at 0x104.
+     * INTC forms EVBA OR offset; all used offsets fit these cleared bits.
      */
     .exception_vectors ALIGN(512) :
     {
         KEEP(*(.exception_vectors))
     } > FLASH
+
+    __system_timer_vector_offset = __system_timer_vector - __exception_vectors;
 
     .text ALIGN(4) :
     {
@@ -82,6 +84,9 @@ SECTIONS
 
 ASSERT(_start == ORIGIN(FLASH), "Reset entry must be at the flash base")
 ASSERT((__exception_vectors & 511) == 0, "EVBA must be 512-byte aligned")
+ASSERT(__system_timer_vector_offset == 0x104, "Unexpected timer vector offset")
+ASSERT((__exception_vectors | __system_timer_vector_offset) == __system_timer_vector,
+       "Timer autovector must obey EVBA OR offset")
 ASSERT((__stack_top__ & 7) == 0, "Stack must be 8-byte aligned")
 ASSERT(__bss_end__ <= __stack_bottom__, "SRAM data overlaps reserved stack")
 ASSERT(__flash_end__ <= ORIGIN(FLASH) + LENGTH(FLASH), "Flash overflow")

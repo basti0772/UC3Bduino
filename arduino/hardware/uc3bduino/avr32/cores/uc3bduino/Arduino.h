@@ -15,6 +15,10 @@ void init(void);
 void pinMode(uint32_t pin, uint32_t mode);
 void digitalWrite(uint32_t pin, uint32_t value);
 int digitalRead(uint32_t pin);
+unsigned long millis(void);
+unsigned long micros(void);
+void delay(unsigned long ms);
+void delayMicroseconds(unsigned int us);
 #ifdef __cplusplus
 }
 /* Sketch functions use C++ linkage; the startup entry main uses C linkage. */

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 name=UC3Bduino AVR32 (compilation smoke test)
-version=0.2.5
+version=0.3.0
 
 # Installer writes an absolute bin path in platform.local.txt. Empty means PATH.
 compiler.path=
