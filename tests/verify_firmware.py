@@ -57,8 +57,8 @@ def read_hex(path):
     return memory
 
 
-def verify(directory, startup_check):
-    elf = (directory / "firmware.elf").read_bytes()
+def verify(directory, startup_check, basename="firmware"):
+    elf = (directory / (basename + ".elf")).read_bytes()
     require(elf[:7] == b"\x7fELF\x01\x02\x01", "Expected big-endian ELF32")
     header = struct.unpack_from(">HHIIIIIHHHHHH", elf, 16)
     kind, machine, _, entry, phoff, shoff, _, _, phsize, phnum, shsize, shnum, strings = header
@@ -111,14 +111,14 @@ def verify(directory, startup_check):
                 name, _, _, info, _, index = struct.unpack_from(">IIIBBH", elf, offset)
                 require(not (name and info >> 4 == 1 and index == 0), "Undefined global symbol")
 
-    hex_memory = read_hex(directory / "firmware.hex")
+    hex_memory = read_hex(directory / (basename + ".hex"))
     require(hex_memory == expected_flash, "HEX differs from ELF load sections")
-    binary = (directory / "firmware.bin").read_bytes()
+    binary = (directory / (basename + ".bin")).read_bytes()
     last = max(expected_flash) + 1
     require(len(binary) == last - FLASH_START, "BIN contains non-flash data or wrong base")
     expected_binary = bytes(expected_flash.get(address, 0) for address in range(FLASH_START, last))
     require(binary == expected_binary, "BIN differs from ELF (including zero-filled gaps)")
-    require((directory / "firmware.map").stat().st_size > 0, "Missing/empty linker map")
+    require((directory / (basename + ".map")).stat().st_size > 0, "Missing/empty linker map")
 
     if startup_check:
         data = by_name[".data"]
@@ -134,5 +134,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--startup-check", action="store_true")
+    parser.add_argument("--basename", default="firmware",
+                        help="Artifact filename stem, e.g. ArduinoMinimal.ino")
     args = parser.parse_args()
-    verify(args.directory, args.startup_check)
+    verify(args.directory, args.startup_check, args.basename)
