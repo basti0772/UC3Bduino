@@ -4,6 +4,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define UC3B_CLOCK_SOURCE_INTERNAL_RC 1
 #ifndef UC3B_CLOCK_SOURCE
 #define UC3B_CLOCK_SOURCE UC3B_CLOCK_SOURCE_INTERNAL_RC
@@ -25,5 +29,9 @@ uint32_t uc3b_clock_get_cpu_hz(void);
 uint32_t uc3b_clock_get_hsb_hz(void);
 uint32_t uc3b_clock_get_pba_hz(void);
 uint32_t uc3b_clock_get_pbb_hz(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

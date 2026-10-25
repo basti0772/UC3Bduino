@@ -5,6 +5,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum { UC3B_GPIO_PORT_A = 0, UC3B_GPIO_PORT_B = 1 };
 
 typedef struct {
@@ -36,5 +40,9 @@ bool uc3b_gpio_disable_pullup(Uc3bGpioPin pin);
  * Invalid pins return false without MMIO; is_valid distinguishes that case.
  */
 bool uc3b_gpio_read(Uc3bGpioPin pin);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

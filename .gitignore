@@ -16,6 +16,9 @@
 __pycache__/
 *.pyc
 
+# Machine-specific Arduino compiler override (normally generated outside repo)
+/arduino/hardware/uc3bduino/avr32/platform.local.txt
+
 # Editor and host files
 /.vscode/
 /.idea/
