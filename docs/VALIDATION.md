@@ -1,4 +1,88 @@
-# Stage 1 validation
+# Validation record
+
+## Stage 2 — executed on 2026-10-25
+
+**Build tested: yes. Hardware tested: no.** No firmware was flashed and no
+physical board or AVR32 simulator was used. Passing builds do not prove the
+PM handshake, actual clock frequency, pad output, input or pull-up behavior.
+
+The installed AVR32-GCC 4.3.2, binutils 2.19.20081016 and Make 3.81 were used on
+Windows 11. Build commands ran through Windows PowerShell 5.1, orchestrated by
+PowerShell 7.6.5. The same legacy-tool sandbox limitation described below
+required authorized host execution. No toolchain was downloaded or replaced.
+
+All three examples compiled and linked with `-Wall -Wextra -Werror`,
+`-nostdlib -nostartfiles`, with successful ELF/HEX/BIN/map generation:
+
+| Example | `avr32-size` text | data | bss (includes stack) | BIN bytes |
+| --- | ---: | ---: | ---: | ---: |
+| minimal | 680 | 0 | 1024 | 1104 |
+| startup-check | 740 | 8 | 1036 | 1172 |
+| gpio-toggle (PA03, compilation only) | 1088 | 0 | 1044 | 1512 |
+
+The original artifact verifier passed on every final example. It checks ELF
+machine/entry, flash load bytes, SRAM/stack bounds, undefined globals, HEX
+checksums and ELF/HEX/BIN agreement. The startup fixture still checks its data
+initializers in the artifact; it has not been executed on a controller.
+
+Additional checks performed:
+
+- GPIO builds at PA03, PA31, PB00 and PB11; PB00 also used one busy-wait iteration.
+  These are compile-time cases, not board pin assignments or hardware results.
+- Repeated PA03 builds produced identical ELF/HEX/BIN/map SHA-256 hashes.
+- Missing/partial pin options, PB12, PA02 (reserved for JTAG in the example),
+  port C, pin 32, zero busy-wait count and GPIO options on `minimal` all fail
+  with nonzero status. Direct compiler probes reject missing/invalid pins,
+  an unsupported clock source and `-mpart=uc3b1256`.
+- Every HAL API was force-retained in an extra scratch ELF using linker `-u`
+  options. It links with no undefined symbols and no libc/libgcc/CRT. This
+  covers APIs otherwise removed from the toggle example by section GC.
+- Disassembly shows full-width GPIO alias stores at documented offsets and
+  PVR reads. Validation branches precede pointer indexing and shifts; no
+  read-modify-write of GPIO output registers occurs. PM uses ordinary loads
+  and stores, not peripheral memory RMW instructions.
+- Reset disassembly contains `ssrf GM`, two NOPs, then SP/EVBA setup. This small
+  correction follows the Rev B erratum; the linker and remaining startup are
+  unchanged. No peripheral interrupts are enabled.
+- Compile-time checks verify used vendor register offsets, 32-bit register
+  words, two banks and 0x100-byte bank stride. Compiler dependency output was
+  compared with the [header manifest](DEVICE_HEADERS.md).
+
+The first compile exposed the historical headers' anonymous unions: the HAL
+requires GCC's documented `-fms-extensions` option in C99 mode. Warnings remain
+errors. A constant local aggregate initializer in the example also caused GCC
+4.3 to request `memcpy`; scalar field initialization avoids that dependency.
+Neither issue was solved by adding a runtime library or suppressing warnings.
+
+### Reproduce Stage 2
+
+```powershell
+.\scripts\build.ps1 -Example minimal
+.\scripts\build.ps1 -Example startup-check
+# Compilation example only; verify your board before flashing any chosen pin.
+.\scripts\build.ps1 -Example gpio-toggle -GpioPort A -GpioPin 3
+python tests/verify_firmware.py build/at32uc3b0256/minimal
+python tests/verify_firmware.py build/at32uc3b0256/startup-check --startup-check
+python tests/verify_firmware.py build/at32uc3b0256/gpio-toggle
+avr32-objdump -d build/at32uc3b0256/gpio-toggle/uc3b_clock.o
+avr32-objdump -d build/at32uc3b0256/gpio-toggle/uc3b_gpio.o
+avr32-nm -u build/at32uc3b0256/gpio-toggle/firmware.elf
+```
+
+Toolchain inspection commands need its bin directory on PATH. Boundary/error
+fixtures and logs remain in ignored scratch storage; no mocking/test framework
+was added. Runtime pin validation was inspected, not executed on a host or MCU.
+
+### Remaining local hardware tests
+
+Follow the [toggle procedure](../examples/gpio_toggle/README.md) and
+[GPIO checks](GPIO.md): identify board/silicon/fuses, verify reset-to-main and PM
+registers, choose a safe physical pad, measure toggles, check set/clear/input and
+pull-ups, read PVR, and confirm unrelated pads remain unchanged. Record actual
+RC timing; nominal 115200 Hz is not a measurement. Debugger/trace ownership,
+oscillator wiring and bootloader coexistence remain TODO / VERIFY.
+
+## Stage 1 historical validation
 
 ## Executed on 2026-10-24
 

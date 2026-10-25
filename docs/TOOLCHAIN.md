@@ -2,7 +2,7 @@
 
 ## Tested baseline
 
-The actual Stage 1 build used this locally installed Windows toolset:
+The actual Stage 1 and Stage 2 builds used this locally installed Windows toolset:
 
 | Program | Observed version / use |
 | --- | --- |
@@ -66,6 +66,7 @@ Use the matching `avr32-*` utilities to inspect these old ELFs.
 | `-ffunction-sections -fdata-sections` | Allow unused functions/data to be removed |
 | `-muse-rodata-section` | Keep read-only data in `.rodata` |
 | `-Wall -Wextra -Werror` | Strict diagnostics supported by GCC 4.3.2 |
+| `-fms-extensions` (HAL only) | Enable anonymous struct/union fields in official Atmel headers under GCC 4.3 C99 |
 | `-MMD -MP` | Local header dependency files |
 | `-nostdlib -nostartfiles` | Exclude vendor CRT, libc and default libraries (including libgcc) |
 | `-Tlinker/at32uc3b0256.ld` | Explicit project memory and section layout |
@@ -85,20 +86,24 @@ libgcc: review the required runtime, licensing and startup contract first.
 
 ## Headers and external components
 
-No device header is required by this stage. Only documented CPU fields are named
-locally, and only the linker defines the chip's memory geometry. Future peripheral
-code can investigate the official toolchain's `avr32/include/avr32/io.h`, selected
-`uc3b0256.h`, and associated module headers or the archive's header packages.
-Each exact package needs its own license review; see [THIRD_PARTY](THIRD_PARTY.md).
+The HAL includes installed `avr32/uc3b0256.h` directly, after checking the
+compiler's target macro. This transitively includes PM/GPIO and other module
+definitions. Anonymous unions in these headers require `-fms-extensions` with
+the tested C99 compiler; without it GCC reports missing register members.
+The option is confined to HAL objects, not a global warning suppression.
+`uc3b_device.h` checks used register offsets and bank stride at compile time.
+See [THIRD_PARTY](THIRD_PARTY.md) for versions, hashes and notices.
 
 Build dependencies are the standalone AVR32 toolchain, GNU Make, and PowerShell.
-No ASF, Studio project, IDE, Newlib headers/libraries, SDK download, or Python is
-required for the firmware build. The ELF verifier uses only Python's standard library.
+Installed standard headers `stdint.h` (Newlib) and `stdbool.h` (GCC) provide
+types; no runtime library is linked. No ASF, Studio project, IDE, separate SDK
+download or Python is required for firmware builds. The ELF verifier uses only
+Python's standard library.
 
-## Why Make in Stage 1
+## Why Make
 
 The installed historical toolchain already includes GNU Make 3.81, while CMake
-is not installed in the validation environment. Two objects and a custom linker
+is not installed in the validation environment. Four objects and a custom linker
 script need no compiler identification or hosted-C compiler probes. A small
 Makefile uses the existing tools directly, and the PowerShell wrapper handles
 Windows discovery, quoting, output-directory creation, and errors.

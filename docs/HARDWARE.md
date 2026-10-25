@@ -1,4 +1,4 @@
-# AT32UC3B0256 startup facts
+# AT32UC3B0256 hardware facts
 
 Primary references (consulted 2026-10-24):
 
@@ -37,7 +37,14 @@ exception must not silently restart initialization.
 
 No INTC registers or peripheral interrupt vectors are initialized. GM stays set.
 The current EVBA alignment/layout applies to the fixed exception offsets only;
-Stage 2 must review the INTC autovector requirements before enabling interrupts.
+A future interrupt stage must review INTC autovectors before enabling interrupts.
+Stage 2 adds two NOPs after `ssrf GM` for the Rev B erratum in section 31.2.4.
+The rest of the reset runtime and the linker script are retained.
+
+Clock and GPIO facts, reset values, register offsets and special pad ownership
+are documented in [CLOCK](CLOCK.md) and [GPIO](GPIO.md), cross-checked against
+the installed official [device headers](DEVICE_HEADERS.md). No register structs
+or vendor implementation sources are copied into the HAL.
 
 ## TODO / VERIFY on real hardware
 
@@ -46,11 +53,12 @@ Stage 2 must review the INTC autovector requirements before enabling interrupts.
 - Verify reset-to-main execution, SP, copy/zero loops and trap behavior with JTAG.
 - Check existing bootloader, flash protection and watchdog fuse configuration.
   This image begins at the first flash byte; no resident bootloader is reserved.
-- Reset uses the internal RC clock; this stage does not change clock registers,
-  configure oscillators, service a watchdog, or promise any timing accuracy.
+- Reset uses the internal RC clock; the clock HAL explicitly selects undivided
+  RCSYS and enables the GPIO bus clock. It does not service a watchdog or promise
+  timing accuracy. Board oscillator population remains unknown.
 - Revalidate reset assumptions if a loader jumps to `_start` without a hardware
   reset. Such a handoff is not currently supported.
 
-No GPIO example is supplied: pin/board selection and peripheral initialization
-belong to Stage 2. Building and inspecting an ELF does not verify execution on a
-physical AT32UC3B0256.
+The GPIO example requires an explicit pin selected from the board schematic.
+Building and inspecting an ELF does not verify execution on a physical
+AT32UC3B0256. No on-device test has been performed.
