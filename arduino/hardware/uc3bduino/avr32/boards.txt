@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+uc3b0256.name=UC3Bduino AT32UC3B0256
+uc3b0256.build.mcu=uc3b0256
+uc3b0256.build.f_cpu=115200L
+uc3b0256.build.board=UC3BDUINO_UC3B0256
+uc3b0256.build.core=uc3bduino
+uc3b0256.build.variant=uc3b0256
+# Memory limits are used by Verify/Compile; no upload tool/protocol is defined.
+uc3b0256.upload.maximum_size=262144
+uc3b0256.upload.maximum_data_size=32768
