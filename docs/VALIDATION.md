@@ -1,6 +1,6 @@
 # Validation record
 
-For the current **Stage 2.5 – Arduino IDE compilation smoke test**, see
+For the current **Stage 4 – HardwareSerial / UART**, see
 [TESTING](TESTING.md): actual CLI builds, installer checks, regression builds
 and the explicit distinction between CLI, IDE GUI and hardware results.
 The records below describe earlier stages.

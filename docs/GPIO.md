@@ -33,6 +33,7 @@ trace can also override pads. Check the schematic and debugger/trace ownership.
 | --- | --- |
 | `config_output(pin)` | Disable pin interrupt and driver, preload LOW, disable pull-up, select GPIO, enable output |
 | `config_input(pin)` | Disable pin interrupt, output driver and pull-up; select GPIO (floating input) |
+| `select_peripheral(pin, function)` | Disable GPIO interrupt/output/pull-up; set PMR0/PMR1 for A=0/B=1/C=2, clear GPER |
 | `enable_gpio(pin)` | Set GPER only; preserve direction, latch and pull-up state |
 | `write(pin, value)` | Set or clear the output latch according to the boolean value |
 | `set(pin)` / `clear(pin)` / `toggle(pin)` | Write OVRS / OVRC / OVRT |
@@ -70,6 +71,7 @@ address is not used; it has silicon revision limitations (section 31.2.4).
 | Register aliases used | Offset within bank |
 | --- | --- |
 | GPERS | `0x04` |
+| GPERC / PMR0S / PMR0C / PMR1S / PMR1C | `0x08` / `0x14` / `0x18` / `0x24` / `0x28` |
 | ODERS / ODERC | `0x44` / `0x48` |
 | OVRS / OVRC / OVRT | `0x54` / `0x58` / `0x5C` |
 | PVR | `0x60` |
@@ -82,8 +84,9 @@ JTAG pads have special electrical behavior described in section 5.1.
 
 For ordinary muxed pins, GPER=1 selects GPIO and GPER=0 selects the peripheral
 chosen by PMR0/PMR1. The A/B/C assignment is pin-specific (table 4-1); its D
-column applies only to UC3Bx512 and must not be used for this target. This stage
-exposes `enable_gpio()`, not a generic peripheral selector. Oscillator and
+column applies only to UC3Bx512 and must not be used for this target. Stage 4
+adds `select_peripheral()` for UART; invalid functions (>2) have no MMIO effect.
+The caller verifies that the selected function exists on the pad. Oscillator and
 debug/trace pin control are separate from this ordinary peripheral mux.
 
 Internal pull-ups are supported. There is no internal pull-down API. Although

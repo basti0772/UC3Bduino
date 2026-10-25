@@ -24,13 +24,13 @@ years vary by file. The notice permits redistribution with source/binary notice
 retention and a non-endorsement clause (three-clause BSD-style terms).
 
 The [manifest](DEVICE_HEADERS.md) records every included vendor header and its
-SHA-256, plus standard `stdint.h` and `stdbool.h`. The original installer
+SHA-256, plus standard `stdint.h`, `stdbool.h` and `stddef.h`. The original installer
 archive/version is unknown; executable versions and file hashes identify the
 tested installation without claiming a newer device pack was used. Compiler
 dependency output (`avr32-gcc -M`) was checked against this list.
 
 `stdint.h` has a permissive notice from Ralf Corsepius requiring notice retention.
-GCC's `stdbool.h` carries GPL terms with an explicit exception for inclusion in
+GCC's `stdbool.h` and Stage 4's `stddef.h` carry GPL terms with an explicit exception for inclusion in
 GCC-compiled source. The [retained notices](THIRD_PARTY_NOTICES.md) include these
 texts and the Atmel conditions. Keep them with distributed firmware/documentation.
 Headers provide types/register definitions; no Newlib or GCC runtime is linked.

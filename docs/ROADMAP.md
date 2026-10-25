@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current: Stage 3 – Arduino timing foundation**
+**Current: Stage 4 – HardwareSerial / UART**
 
 Each stage should have its own review and validation. A checked build is not a
 claim of working peripherals or Arduino compatibility.
@@ -19,8 +19,11 @@ claim of working peripherals or Arduino compatibility.
 3. **Arduino timing foundation** — build and host logic tests verified: TC0,
    minimal INT0 entry, millis/micros and timer-based delays. All five Arduino
    sketches compile. Hardware accuracy and interrupt latency remain untested.
-4. **HardwareSerial / UART** — next: USART, RX buffering and basic Print.
-5. **ADC / analogRead** — ADC channels, reference and conversion behavior.
+4. **HardwareSerial / UART** — build and host logic tests verified: one Serial,
+   selectable MCU routes, polling TX, INT1 RX ring, decimal Print and explicit
+   OSC0 option. All eight Arduino sketches compile. Real board pin/clock selection
+   and physical UART tests are pending; see [SERIAL](SERIAL.md).
+5. **ADC / analogRead** — next: ADC channels, reference and conversion behavior.
 6. **SPI** — synchronous serial bus API.
 7. **Wire / I2C** — two-wire bus API.
 8. **PWM / analogWrite** — timer allocation, output routing and PWM behavior.

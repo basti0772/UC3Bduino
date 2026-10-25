@@ -2,18 +2,22 @@
 
 Arduino-compatible core for Atmel AVR32 UC3B microcontrollers.
 
-**Stage 3 – Arduino timing foundation**
+**Stage 4 – HardwareSerial / UART**
 
 Arduino CLI now recognizes **UC3Bduino AT32UC3B0256** and builds the supplied
 `.ino` sketches to ELF/HEX/BIN/map files. The minimal C++98 core implements
 `setup()`/`loop()`, `pinMode()`, `digitalWrite()` and `digitalRead()` over the
 existing clock/GPIO HAL. TC0 now supplies `millis()`, `micros()`, `delay()` and
-`delayMicroseconds()`; see [timing and limits](docs/TIMING.md). This is not full
-Arduino compatibility. IDE GUI and hardware execution remain untested.
+`delayMicroseconds()`; see [timing and limits](docs/TIMING.md). One `Serial`
+object now provides polling TX, interrupt RX and decimal `print/println`,
+including `Serial.println(millis())`. See [Serial setup](docs/SERIAL.md) for
+explicit pin/clock selection. This is a limited Arduino API subset. All eight
+examples compile; IDE GUI and hardware execution remain untested.
 
 Both build paths use the same reset code, memory layout and C HAL for
 **AT32UC3B0256** only. Startup initializes the stack, copies `.data`, clears
-`.bss`, and calls `main()`. The clock uses undivided internal RC. No operating
+`.bss`, and calls `main()`. The clock defaults to undivided internal RC;
+board-verified OSC0 can be explicitly selected for useful UART rates. No operating
 system, C library or Atmel Software Framework (ASF) is linked.
 
 ## Requirements
@@ -60,6 +64,11 @@ installation layout and the `DigitalOutput` example. Its logical `D0` slot needs
 an explicit GPIO mapping; no LED or full board pinout is assumed. Upload is not
 implemented. The [test matrix](docs/TESTING.md) separates executed builds from
 the documented IDE procedure and pending hardware tests.
+
+For Serial, select a route and actual oscillator using the installer options
+in [SERIAL](docs/SERIAL.md). There is no assumed board mapping, and the default
+RC clock cannot generate 115200 baud. `SerialHello`, `SerialMillis` and
+`SerialEcho` exercise output, timer integration and receive/echo respectively.
 
 ## Bare-metal build on Windows
 
@@ -129,13 +138,13 @@ and [clock configuration](docs/CLOCK.md). CPU, HSB, PBA and PBB are nominally
 ```text
 src/main.c                   minimal program
 src/startup/uc3_startup.S     original UC startup and exception traps
-src/hal/                    clock and GPIO implementation using installed headers
+src/hal/                    clock, GPIO, timer and UART using installed headers
 linker/at32uc3b0256.ld        device memory layout and stack reservation
 tools/targets/               device compiler selection
 arduino/hardware/            local Arduino platform, core and variant template
 scripts/                    Windows build, clean and Arduino installation
-examples/                   bare-metal examples and ArduinoMinimal/DigitalOutput
-tests/                      independent ELF/HEX/BIN inspection
+examples/                   three bare-metal and eight Arduino examples
+tests/                      artifact inspection and native timing/serial logic tests
 docs/                       hardware sources, design, roadmap, validation
 ```
 
@@ -148,20 +157,23 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
   [TESTING](docs/TESTING.md), the earlier [validation record](docs/VALIDATION.md)
   and [hardware assumptions](docs/HARDWARE.md).
 - Full-flash reset image; no bootloader reservation or upload support.
-- Only undivided internal RC clock initialization is implemented. Board crystal,
-  pin wiring and watchdog/fuses are unknown. No PLL, complete board pin mapping, INTC
+- Internal RC remains the default; optional OSC0 accepts an explicit 0.4..16 MHz
+  crystal or external clock. Board crystal, pin wiring and watchdog/fuses are
+  unknown. No PLL, complete board pin mapping, general INTC
   dispatch, watchdog servicing or calibrated timing is supplied.
 - Arduino timer init enables interrupts after configuring TC0 and its vector.
   Bare-metal examples keep interrupts masked. Exceptions halt at trap entries.
 - C99 and C++98 with legacy AVR32-GCC 4.3.2. Global C++ constructors,
   exceptions, RTTI, heap, libc, and syscalls
   are not supported. Additional UC3B variants require explicit validation.
-- Timing uses nominal RC frequency: 1 ms returned granularity for millis,
-  69.44 us counter resolution for micros. Interrupt service must occur within
+- Default timing uses nominal RC frequency: 1 ms returned granularity for millis,
+  69.44 us counter resolution for micros (finer with OSC0). Timer service must occur within
   each 10 ms period. Timing accuracy and API latency are not hardware-verified.
-- No `Serial`, SPI, Wire,
-  ADC, PWM, USB, interrupt API or Boards Manager distribution. The next stage
-  is HardwareSerial/UART.
+- Serial supports one selected USART, 8N1, polling TX and 63 usable RX bytes
+  by default. Pin/clock configuration is required; RX service latency is unmeasured.
+  Print supports decimal integers/text, with no full Stream/virtual Print ABI.
+- No SPI, Wire, ADC, PWM, USB, external-interrupt API or Boards Manager
+  distribution. The next stage is ADC / analogRead().
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and
 [THIRD_PARTY](docs/THIRD_PARTY.md). Original project files use the [MIT license](LICENSE).

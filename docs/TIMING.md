@@ -1,4 +1,4 @@
-# Stage 3 – Arduino timing foundation
+# Arduino timing foundation (introduced in Stage 3)
 
 The Arduino core reserves **TC channel 0** for system timing: **Reserved by
 UC3Bduino core for system timing**. Its interrupt group (INTC group 14) is also
@@ -27,14 +27,14 @@ sections 2.6, 3.7 and 3.8. The installed GCC manual documents the AVR32
 
 ## Configuration and resolution
 
-| Property | Current configuration |
+| Property | Default internal-RC configuration |
 | --- | --- |
 | Source | `uc3b_clock_get_pba_hz()`, nominal 115200 Hz |
 | Prescaler | 8 |
 | Counter frequency | nominal 14400 Hz |
 | RC | 144 ticks |
 | Interrupt rate | nominal 100 Hz (10 ms) |
-| Priority | INT0, lowest; no nested higher-priority users in Stage 3 |
+| Priority | INT0, lowest; Stage 4 UART uses INT1 |
 | millis return granularity | integer milliseconds; interpolated from CV |
 | micros counter resolution | nominal 69.444… us, returned as integer 69/70 us steps |
 
@@ -56,7 +56,10 @@ clock must be configured before timer init, reported correctly by the clock HAL,
 and satisfy those bounds. Live clock changes are unsupported. For example,
 48 MHz fits this calculation; undivided 60 MHz does not. Neither clock is enabled
 by Stage 3. Changing CPU/PBA division also requires a fresh interrupt-latency
-review; this stage uses CPU=HSB=PBA=PBB.
+review; this core uses CPU=HSB=PBA=PBB. Stage 4's explicit OSC0 option meets
+these bounds. At its 12 MHz compile fixture, counter frequency is 1.5 MHz,
+RC=15000, with nominal 0.666667-us counter ticks and integer microsecond API
+results; the interrupt period remains 10 ms. These are calculated, not measured.
 
 ## Startup, vector and interrupt ownership
 

@@ -1,6 +1,6 @@
 # Architecture direction
 
-**Stage 3 – Arduino timing foundation**
+**Stage 4 – HardwareSerial / UART**
 
 ```text
 Arduino API
@@ -18,7 +18,7 @@ AT32UC3B hardware registers
 The minimal Arduino API exposes setup/loop and digital GPIO functions. The core
 owns their semantics and maps logical pins through the variant table. The UC3B
 HAL implements MCU operations independently of Arduino names; installed device
-headers provide register layouts. Classes, resource allocation and a complete
+headers provide register layouts. General resource allocation and a complete
 board wiring description remain future work. Other UC3B devices need separate
 verification.
 
@@ -37,7 +37,7 @@ the clock explicitly in `main`; `startup-check` retains its memory-only purpose.
 All HAL functions compile, while section garbage collection removes unused ones.
 
 The startup and linker contracts remain intact. Two NOPs after masking GM apply
-the documented Rev B erratum. Stage 3 adds only a TC0 interrupt entry at 0x104;
+the documented Rev B erratum. TC0 has an interrupt entry at 0x104 and UART at 0x108;
 linker assertions enforce EVBA-OR-offset addressing and retain the existing base.
 Clock setup is a reset-time operation with interrupts masked. GPIO alias writes
 are atomic per register, but callers serialize configuration/ownership changes.
@@ -59,7 +59,8 @@ canonical `src/hal`, `src/startup/uc3_startup.S` and
 SHA-256 hashes in `shared-sources.json`. No duplicate startup or linker source
 is maintained in Git. Shared changes require reinstalling the snapshot. A
 generated `platform.local.txt` selects the installed toolchain's absolute bin
-path, including paths with spaces.
+path, including paths with spaces. `boards.local.txt` records explicit OSC0
+clock/F_CPU and ring-size flags; `serial_config.h` records the selected route.
 
 The linker uses `--undefined=_start` to extract reset code from `core.a`, which
 then references main. The same memory and unsupported-runtime assertions apply
@@ -88,5 +89,28 @@ the two epochs and coherent CV/status snapshots. Short critical sections preserv
 the caller's mask, and conversion runs after restoring it. Native tests execute
 the real C logic with scripted register events and the real C++ wait wrappers
 with a wrapping clock. They do not simulate AVR32 hardware. See [TIMING](TIMING.md)
-for service-latency, precision and clock-change constraints. HardwareSerial is
-the next separate stage.
+for service-latency, precision and clock-change constraints.
+
+## HardwareSerial and interrupt ownership
+
+`HardwareSerial.cpp` owns the Arduino adapter and sole global `Serial` object.
+Its constructor-free `Print` base formats decimal integers using ten stack bytes
+and a byte-writer callback; no vtable, sprintf or runtime library is needed.
+`begin()` binds that callback only after successful HAL configuration. This is
+a deliberately small API subset, not Arduino's complete virtual Print/Stream ABI.
+
+`uc3b_uart.c` owns one static RX ring and foreground API. Its private hardware
+adapter maps an explicitly selected MCU route to USART registers/clock/INTC
+group and delegates mux operations to `uc3b_gpio_select_peripheral`. No board
+connector mapping is embedded. The unconfigured route leaves UART inactive.
+UART uses INT1 and timer INT0; selected USART group 5/6/7 and TC group 14 are
+reserved. Both use `uc3b_irq.h` for GM save/restore. RX head/tail operations are
+briefly masked; TX polling never masks while waiting. Hardware errors and full
+buffers discard new bytes. No DMA or general dispatcher is added.
+
+115200 baud cannot come from default RCSYS. The shared clock HAL therefore
+offers opt-in OSC0, explicitly configured before timer initialization, without
+a PLL or live frequency changes. CPU/HSB/PBA/PBB remain equal. U0A conflicts
+with OSC0 and is rejected. Existing default RC behavior and bare-metal builds
+are preserved. See [SERIAL](SERIAL.md) for registers, ownership, wiring, rates,
+callback limitations and pending hardware validation.

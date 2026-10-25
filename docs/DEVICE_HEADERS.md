@@ -38,3 +38,4 @@ Standard headers also included (no standard library is linked):
 | --- | --- |
 | `avr32/include/stdint.h` | `31631cc0c81d6c8460ede78476af4f4173e7ce34153cff5eb5bd3d07ba46d7f6` |
 | `lib/gcc/avr32/4.3.2/include/stdbool.h` | `bc2f65d7097ee6fe351996811ffa242f2032081f1310e8ab023a975c90e5d7e8` |
+| `lib/gcc/avr32/4.3.2/include/stddef.h` (Print `size_t`, Stage 4) | `1f7e63a1e17b5788a5ab754d91ca35ef1bba197e2a5715b333a4cc5113f411bf` |

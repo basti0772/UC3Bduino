@@ -1,6 +1,95 @@
 # Test record
 
-## Stage 3 – Arduino timing foundation
+## Stage 4 – HardwareSerial / UART
+
+Executed 2026-10-25 with AVR32 GCC/G++ 4.3.2, binutils 2.19.20081016,
+Arduino CLI 1.5.2-rc.1, Windows PowerShell 5.1 and native MSVC 14.51.36231.
+Target builds use C99/C++98 and `-Wall -Wextra -Werror`; native tests use
+`/W4 /WX`. No board, simulator, terminal adapter or oscilloscope was used.
+
+| Check | Status | Evidence / scope |
+| --- | --- | --- |
+| SerialHello compile | PASS | CLI preprocess, compile/archive/link, ELF/HEX/BIN/map verification |
+| SerialMillis compile | PASS | Serial.println(millis()) + delay(1000), artifact verification |
+| SerialEcho compile | PASS | available/read/write integration, artifact verification |
+| ArduinoMinimal, DigitalOutput, Blink, MillisTest, MicrosPulse | PASS | All five regressions compile and pass artifact checks with explicit 12 MHz OSC0 |
+| Default RC ArduinoMinimal, Blink, SerialHello | PASS | Fresh install without Serial route or OSC0 options; unconfigured Serial is an intentional inactive runtime configuration |
+| Bare-metal minimal, gpio-toggle, startup-check | PASS | Rebuilt, sizes unchanged, independent artifact checks |
+| UART baud calculation | PASS | Five required rates at 12 MHz; zero/overflow/divider boundaries, exact +/-2% acceptance boundary, rational error oracle across >15000 rates |
+| RX buffer test (host) | PASS | Real HAL C logic at sizes 2/64/256; full/drop-new, wrap, peek, binary 0/255, 30000 randomized producer/consumer operations per size against reference queue |
+| RX error/lifecycle logic (host) | PASS | OVRE/FRAME/PARE separately and together, errors without RXRDY, drain/reset, empty reads, repeated/invalid begin, prior GM state preserved |
+| TX flush semantics (host) | PASS | Scripted TXRDY then later TXEMPTY; flush waits for latter and preserves RX |
+| Print / HardwareSerial API (host) | PASS | Real C++ implementation, decimal signed/unsigned limits, LONG_MIN, zero, CRLF, partial writes, binary bytes, begin/end and invalid format |
+| Existing timing native tests | PASS | Snapshot races, pending compares, rollover, conversions, delay boundaries unchanged |
+| ISR/vector disassembly | PASS | UART at 0x80000308 targets strong ISR; RHR drain, ring/error handling, CSR acknowledgment + three NOPs, saved registers and rete; no calls/division in ISR |
+| Runtime dependencies | PASS | No undefined globals, constructor sections, heap, sprintf, libc/libgcc/CRT; Serial is a trivial BSS object |
+| OSC0 branches | PASS | External/crystal compile at 0.4/0.9/3/8/16 MHz, all gain selection branches covered |
+| Installer validation | PASS | Ten invalid clock/pin/route/buffer combinations rejected before writes; WhatIf and existing-target refusal checked; case-insensitive route normalized |
+| Installer shared sources | PASS | 18 files checked against SHA-256 manifest and canonical source bytes in fresh installs |
+| Arduino IDE Verify / Serial recognition in GUI | NOT TESTED | Procedure documented, no GUI run |
+| UART TX hardware | NOT TESTED | No transmitted waveform or terminal output observed |
+| UART RX hardware | NOT TESTED | No physical echo/error recovery observed |
+| 115200 baud test (hardware) | NOT TESTED | Calculation/build pass only; no bit-time measurement |
+| 9600/19200/38400/57600 hardware | NOT TESTED | Calculation pass only |
+| RX buffer test (hardware) / sustained traffic | NOT TESTED | No on-device overflow/latency/throughput measurements |
+| OSC0 startup / timing under RX load | NOT TESTED | Board clock, silicon revision and wiring remain unknown |
+| Integrated upload | NOT AVAILABLE | No upload implementation in this stage |
+
+The UART host test replaces only the private hardware adapter; its ring and
+baud logic are the production C implementation. The Print test replaces the
+UART transport, not integer formatting or HardwareSerial. These tests do not
+simulate AVR32 interrupts, MMIO propagation or oscillator behavior.
+
+The configured build fixture uses **U0C, TX PB11 / RX PB10, function C,
+12 MHz crystal OSC0, D0=PA03**, solely for compilation. This does not establish
+real board wiring. The installer rejects U0A with OSC0 because PA18 is shared.
+The required five rates calculate to +0.160256% nominal error in this fixture;
+see [SERIAL](SERIAL.md) for exact formula and rounded actual rates.
+
+| Arduino sketch (12 MHz fixture) | text | data | bss including 1 KiB stack | BIN bytes |
+| --- | ---: | ---: | ---: | ---: |
+| ArduinoMinimal | 996 | 0 | 1036 | 1420 |
+| DigitalOutput | 1620 | 0 | 1036 | 2044 |
+| Blink | 1832 | 0 | 1036 | 2256 |
+| MillisTest | 1848 | 0 | 1044 | 2272 |
+| MicrosPulse | 1868 | 0 | 1040 | 2292 |
+| SerialHello | 2276 | 0 | 1120 | 2700 |
+| SerialMillis | 2588 | 0 | 1120 | 3012 |
+| SerialEcho | 2324 | 0 | 1120 | 2748 |
+
+SerialHello/SerialMillis use **96 bytes of static RAM plus the 1024-byte stack
+reservation**. This includes the 64-byte RX array, indices, route/state, Serial
+callback and the existing timer state. No libc components are linked. Stack
+high-water use with nested interrupts remains unmeasured. Text totals omit
+alignment gaps; BIN size is the complete flash span. With default RC,
+ArduinoMinimal remains 952/0/1036 and Blink 1788/0/1036 (text/data/bss), identical
+to Stage 3; bare-metal totals also remain unchanged.
+
+For reproduction, install a fresh explicit fixture following SERIAL.md, point
+CLI at that sketchbook, then repeat this pattern for the eight example names:
+
+```powershell
+arduino-cli compile --config-file <your-cli.yaml> --fqbn uc3bduino:avr32:uc3b0256 --build-path build/serial-hello --verbose examples/SerialHello
+python tests/verify_firmware.py build/serial-hello --basename SerialHello.ino
+avr32-size build/serial-hello/SerialHello.ino.elf
+```
+
+In a Visual Studio developer command prompt, create `build` if needed, then:
+
+```bat
+cl /nologo /W4 /WX /TC /std:c11 tests\serial_uart_test.c /Fobuild\serial_uart_test.obj /Febuild\serial_uart_test.exe
+build\serial_uart_test.exe
+cl /nologo /W4 /WX /EHsc /I src /I arduino\hardware\uc3bduino\avr32\cores\uc3bduino /I arduino\hardware\uc3bduino\avr32\variants\uc3b0256 tests\serial_print_test.cpp /Fobuild\serial_print_test.obj /Febuild\serial_print_test.exe
+build\serial_print_test.exe
+```
+
+Repeat the C test with `/DSERIAL_RX_BUFFER_SIZE=2` and `=256`. Its default is 64.
+The Print test expects the target's 32-bit long ABI, also provided by MSVC;
+an LP64 host intentionally fails the width assertion. Timing test commands
+remain below. Physical acceptance procedure is in SERIAL.md; all such results
+are still pending.
+
+## Stage 3 – Arduino timing foundation (historical)
 
 Executed 2026-10-25 with the same AVR32 GCC/G++ 4.3.2, binutils 2.19.20081016,
 Arduino CLI 1.5.2-rc.1 and Windows PowerShell 5.1 baseline recorded below.

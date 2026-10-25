@@ -39,6 +39,8 @@ Stage 3 adds a timer branch at offset 0x104 and configures INTC group 14 at INT0
 from Arduino init. The linker verifies EVBA OR offset equals the branch address.
 GM stays set in bare-metal examples; Arduino timer init enables it only after
 the timer and vector are configured. See [TIMING](TIMING.md).
+Stage 4 adds a USART INT1 branch at 0x108, configured by Serial.begin after the
+timer is running. Its route, register and electrical checks are in [SERIAL](SERIAL.md).
 Stage 2 adds two NOPs after `ssrf GM` for the Rev B erratum in section 31.2.4.
 The rest of the reset runtime and memory layout are retained.
 
@@ -54,8 +56,8 @@ or vendor implementation sources are copied into the HAL.
 - Verify reset-to-main execution, SP, copy/zero loops and trap behavior with JTAG.
 - Check existing bootloader, flash protection and watchdog fuse configuration.
   This image begins at the first flash byte; no resident bootloader is reserved.
-- Reset uses the internal RC clock; the clock HAL explicitly selects undivided
-  RCSYS and enables the GPIO bus clock. It does not service a watchdog or promise
+- Reset uses internal RC. The clock HAL defaults to undivided RCSYS, or enables
+  explicitly configured OSC0 before peripheral startup. It does not service a watchdog or promise
   timing accuracy. Board oscillator population remains unknown.
 - Revalidate reset assumptions if a loader jumps to `_start` without a hardware
   reset. Such a handoff is not currently supported.

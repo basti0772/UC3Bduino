@@ -1,10 +1,12 @@
-# Local Arduino installation (Stage 3 – Arduino timing foundation)
+# Local Arduino installation (Stage 4 – HardwareSerial / UART)
 
 The local package exposes **UC3Bduino AT32UC3B0256**, with FQBN
 `uc3bduino:avr32:uc3b0256`. It provides a small C++98 core, `setup()`/`loop()`,
 `pinMode(INPUT/OUTPUT/INPUT_PULLUP)`, `digitalWrite()` and `digitalRead()` over
 the existing C HAL. Stage 3 adds hardware-backed time APIs and Blink/MillisTest/
-MicrosPulse; see [TIMING](TIMING.md). Upload and hardware execution are not tested or integrated.
+MicrosPulse; see [TIMING](TIMING.md). Stage 4 adds HardwareSerial/Print and three
+Serial sketches; configure their pins and clock as described in [SERIAL](SERIAL.md).
+Upload and hardware execution are not tested or integrated.
 See [TESTING](TESTING.md) for the distinction between CLI and GUI results.
 
 ## Install locally on Windows
@@ -33,8 +35,9 @@ inheriting `AVR32_TOOLCHAIN_PATH` or on shell expansion of that variable.
 
 Installation creates `<Sketchbook>/hardware/uc3bduino/avr32/`, containing:
 
-- `boards.txt`, `platform.txt`, and generated `platform.local.txt`.
+- `boards.txt`, `platform.txt`, and generated `platform.local.txt` / `boards.local.txt`.
 - `cores/uc3bduino/Arduino.h`, `main.cpp`, `wiring_digital.cpp`, `wiring_time.cpp`.
+- `Print` and `HardwareSerial` headers/implementations, plus variant `serial_config.h`.
 - Exact copies of `src/hal/*` under the core's `hal/` and the existing startup
   under `startup/`, plus the existing linker script under `system/`.
 - The `uc3b0256` variant, project license and external header notices.
@@ -58,6 +61,9 @@ restricted, use the README's one-process PowerShell execution-policy override.
 4. Click **Verify**. Expected artifacts are `<SketchName>.ino.elf`, `.hex`, `.bin`
    and `.map` in Arduino's build directory; enable verbose compilation output to
    locate it. CLI can supply an explicit build path as below.
+5. With verified serial/clock options installed, open SerialHello, SerialMillis
+   or SerialEcho and Verify. Arduino.h exposes Serial automatically. These three
+   examples were compiled by CLI; the IDE GUI procedure remains NOT TESTED.
 
 This is the documented IDE workflow, not a claim of a GUI test. The CLI uses
 the same package recipes. There is no upload recipe, fake programmer, port
@@ -136,10 +142,11 @@ invalid/unconfigured pins. Unsupported modes are ignored. Nonzero writes mean
 HIGH, but writing HIGH to an input only changes its latch: use INPUT_PULLUP
 explicitly. These are limited smoke-test semantics, not full Arduino parity.
 
-`F_CPU` and the HAL getters report nominal 115200 Hz; actual RCSYS varies.
-Arduino init enables the TC0 timer interrupt; long interrupt masking loses time.
-Serial, ADC/PWM, buses and USB remain unimplemented. Timing uses nominal RC
-frequency with limitations documented in TIMING.md. Size reporting includes the reserved 1 KiB stack in SRAM usage;
+`F_CPU` and the HAL getters report nominal 115200 Hz by default, or the explicitly
+configured OSC0 frequency. Arduino init enables the TC0 timer interrupt; long
+interrupt masking loses time and may overrun Serial RX. Serial supports the
+subset documented in SERIAL.md; ADC/PWM, buses and USB remain unimplemented.
+Timing limits are documented in TIMING.md. Size reporting includes the reserved 1 KiB stack in SRAM usage;
 program section totals omit alignment gaps, so use the BIN span/map and linker
 checks for flash occupancy. Full-flash layout requires separate bootloader/fuse
 and board verification before any external programming.
