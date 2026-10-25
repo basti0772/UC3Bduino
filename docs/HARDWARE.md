@@ -35,11 +35,12 @@ not handler addresses. Offsets and unused architectural slots are named beside
 the assembly. Reset and exception entry zero are separate: an unrecoverable
 exception must not silently restart initialization.
 
-No INTC registers or peripheral interrupt vectors are initialized. GM stays set.
-The current EVBA alignment/layout applies to the fixed exception offsets only;
-A future interrupt stage must review INTC autovectors before enabling interrupts.
+Stage 3 adds a timer branch at offset 0x104 and configures INTC group 14 at INT0
+from Arduino init. The linker verifies EVBA OR offset equals the branch address.
+GM stays set in bare-metal examples; Arduino timer init enables it only after
+the timer and vector are configured. See [TIMING](TIMING.md).
 Stage 2 adds two NOPs after `ssrf GM` for the Rev B erratum in section 31.2.4.
-The rest of the reset runtime and the linker script are retained.
+The rest of the reset runtime and memory layout are retained.
 
 Clock and GPIO facts, reset values, register offsets and special pad ownership
 are documented in [CLOCK](CLOCK.md) and [GPIO](GPIO.md), cross-checked against

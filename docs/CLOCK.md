@@ -73,5 +73,5 @@ not AVR32 memory RMW instructions. GPIO uses atomic aliases separately.
   ready/lock sequencing, frequency limits, flash wait states and revision-specific
   errata checked together. OSC1 and the 32 kHz oscillator are not direct MCSEL
   choices; their existence does not establish board wiring.
-- A timer-based timebase and calibrated timing belong to a later stage. The
-  smoke-test busy wait is independent of any Arduino timing API.
+- Stage 3 derives its [timer timebase](TIMING.md) from the PBA getter. It does
+  not calibrate RCSYS. The bare-metal smoke-test busy wait remains independent.

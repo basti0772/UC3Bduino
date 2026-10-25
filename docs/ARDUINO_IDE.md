@@ -1,9 +1,10 @@
-# Stage 2.5 – Arduino IDE compilation smoke test
+# Local Arduino installation (Stage 3 – Arduino timing foundation)
 
 The local package exposes **UC3Bduino AT32UC3B0256**, with FQBN
 `uc3bduino:avr32:uc3b0256`. It provides a small C++98 core, `setup()`/`loop()`,
 `pinMode(INPUT/OUTPUT/INPUT_PULLUP)`, `digitalWrite()` and `digitalRead()` over
-the existing C HAL. Upload and hardware execution are not tested or integrated.
+the existing C HAL. Stage 3 adds hardware-backed time APIs and Blink/MillisTest/
+MicrosPulse; see [TIMING](TIMING.md). Upload and hardware execution are not tested or integrated.
 See [TESTING](TESTING.md) for the distinction between CLI and GUI results.
 
 ## Install locally on Windows
@@ -33,7 +34,7 @@ inheriting `AVR32_TOOLCHAIN_PATH` or on shell expansion of that variable.
 Installation creates `<Sketchbook>/hardware/uc3bduino/avr32/`, containing:
 
 - `boards.txt`, `platform.txt`, and generated `platform.local.txt`.
-- `cores/uc3bduino/Arduino.h`, `main.cpp`, `wiring_digital.cpp`.
+- `cores/uc3bduino/Arduino.h`, `main.cpp`, `wiring_digital.cpp`, `wiring_time.cpp`.
 - Exact copies of `src/hal/*` under the core's `hal/` and the existing startup
   under `startup/`, plus the existing linker script under `system/`.
 - The `uc3b0256` variant, project license and external header notices.
@@ -136,8 +137,9 @@ HIGH, but writing HIGH to an input only changes its latch: use INPUT_PULLUP
 explicitly. These are limited smoke-test semantics, not full Arduino parity.
 
 `F_CPU` and the HAL getters report nominal 115200 Hz; actual RCSYS varies.
-Interrupts remain masked. No timing functions, serial, ADC/PWM, buses or USB are
-implemented. Size reporting includes the reserved 1 KiB stack in SRAM usage;
+Arduino init enables the TC0 timer interrupt; long interrupt masking loses time.
+Serial, ADC/PWM, buses and USB remain unimplemented. Timing uses nominal RC
+frequency with limitations documented in TIMING.md. Size reporting includes the reserved 1 KiB stack in SRAM usage;
 program section totals omit alignment gaps, so use the BIN span/map and linker
 checks for flash occupancy. Full-flash layout requires separate bootloader/fuse
 and board verification before any external programming.

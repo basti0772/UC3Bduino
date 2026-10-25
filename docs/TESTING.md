@@ -1,4 +1,62 @@
-# Stage 2.5 – Arduino IDE compilation smoke test
+# Test record
+
+## Stage 3 – Arduino timing foundation
+
+Executed 2026-10-25 with the same AVR32 GCC/G++ 4.3.2, binutils 2.19.20081016,
+Arduino CLI 1.5.2-rc.1 and Windows PowerShell 5.1 baseline recorded below.
+Native logic tests used MSVC 14.51.36231, `/W4 /WX`. No MCU or simulator ran.
+
+| Check | Status | Scope |
+| --- | --- | --- |
+| ArduinoMinimal, DigitalOutput, Blink, MillisTest, MicrosPulse | PASS | Actual CLI compile/link and independent ELF/HEX/BIN/map checks |
+| Bare-metal minimal, gpio-toggle, startup-check | PASS | Rebuilt and verified; prior sizes unchanged |
+| Timer snapshot races and wrap | PASS | Real C implementation; scripted CV/SR events, pending flags, no double-count, GM preservation |
+| Timer conversion bounds | PASS | All 144 current-clock CV values and 65535 maximum-period positions against 64-bit test oracles |
+| Clock/init rejection | PASS | Unmasked/repeated init, zero/nondivisible/too-fast PBA rejected |
+| Wait arithmetic | PASS | Real C++ wrappers: zero, wrap boundaries, chunk boundaries and UINT32_MAX durations |
+| Vector/ISR machine code | PASS | 0x80000304 branches to strong timer ISR; status acknowledgment, two epoch adds and rete; no ISR division |
+| Snapshot machine code | PASS | GM mask plus two NOPs, CV before SR, conditional reread, prior-mask restoration and native divu |
+| IDE GUI | NOT TESTED | CLI tests only |
+| Upload / hardware timing / ISR latency | NOT TESTED | No physical execution, pulse measurements or masking stress run |
+
+| Arduino sketch | text | data | bss including 1 KiB stack | BIN bytes |
+| --- | ---: | ---: | ---: | ---: |
+| ArduinoMinimal | 952 | 0 | 1036 | 1376 |
+| DigitalOutput | 1576 | 0 | 1036 | 2000 |
+| Blink | 1788 | 0 | 1036 | 2212 |
+| MillisTest | 1804 | 0 | 1044 | 2228 |
+| MicrosPulse | 1824 | 0 | 1040 | 2248 |
+
+Compared with Stage 2.5 ArduinoMinimal, timing initialization/ISR adds **252
+bytes text/BIN and 12 bytes static RAM**. Unused read/delay APIs are removed by
+section GC in that sketch. Bare-metal sizes remain 680/1088/740 text for
+minimal/gpio-toggle/startup-check. No runtime library was added.
+
+Validation installed a fresh isolated `.scratch/stage03/sketchbook` with explicit
+PA03 for compilation only. Its CLI YAML used that user directory and the existing
+Arduino15 data directory. For each of the five sketch names, the actual pattern was:
+
+```powershell
+arduino-cli compile --config-file .scratch/stage03/arduino-cli.yaml --fqbn uc3bduino:avr32:uc3b0256 --build-path .scratch/stage03/build-Blink --verbose examples/Blink
+python tests/verify_firmware.py .scratch/stage03/build-Blink --basename Blink.ino
+```
+
+Native tests can be reproduced from a Visual Studio developer command prompt
+(create the ignored output directory first):
+
+```bat
+cl /nologo /W4 /WX /TC /std:c11 tests\timing_snapshot_test.c /Fobuild\timing_snapshot_test.obj /Febuild\timing_snapshot_test.exe
+build\timing_snapshot_test.exe
+cl /nologo /W4 /WX /EHsc /I src /I arduino\hardware\uc3bduino\avr32\cores\uc3bduino /I arduino\hardware\uc3bduino\avr32\variants\uc3b0256 tests\timing_delay_test.cpp /Fobuild\timing_delay_test.obj /Febuild\timing_delay_test.exe
+build\timing_delay_test.exe
+```
+
+The tests replace only hardware observations/clock advancement, not the snapshot
+or wait algorithms. They do not prove INTC/MMIO timing, oscillator accuracy or
+interrupt latency. See [TIMING](TIMING.md) for the sub-10-ms service requirement,
+quantization, nominal scope targets and pending on-device checks.
+
+## Stage 2.5 – Arduino IDE compilation smoke test (historical)
 
 Executed on **2026-10-25**, Windows 11. The installed Arduino CLI reports
 **1.5.2-rc.1**, commit `fef6e48df`, build date 2026-07-23. The AVR32 toolchain

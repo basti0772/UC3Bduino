@@ -1,6 +1,6 @@
 # Architecture direction
 
-**Stage 2.5 – Arduino IDE compilation smoke test**
+**Stage 3 – Arduino timing foundation**
 
 ```text
 Arduino API
@@ -37,21 +37,21 @@ the clock explicitly in `main`; `startup-check` retains its memory-only purpose.
 All HAL functions compile, while section garbage collection removes unused ones.
 
 The startup and linker contracts remain intact. Two NOPs after masking GM apply
-the documented Rev B erratum; no interrupt initialization or dispatch is added.
+the documented Rev B erratum. Stage 3 adds only a TC0 interrupt entry at 0x104;
+linker assertions enforce EVBA-OR-offset addressing and retain the existing base.
 Clock setup is a reset-time operation with interrupts masked. GPIO alias writes
 are atomic per register, but callers serialize configuration/ownership changes.
 The pin-validity helper is hardware-independent and can be host-tested later;
-this stage adds no mocking framework.
+GPIO remains independent of the timing component.
 
 ## Arduino integration
 
 `arduino/hardware/uc3bduino/avr32` is the platform template. Its `boards.txt`
 selects the one MCU, core and variant. `platform.txt` mirrors the bare-metal
 target/section/freestanding flags and adds C++98 compilation and an Arduino core
-archive. `main.cpp` initializes the clock, calls the sketch's `setup()` once,
+archive. `main.cpp` initializes the clock and system timer, calls `setup()` once,
 then calls `loop()` forever. HAL functions retain C linkage through guarded
-declarations; setup/loop retain C++ linkage. The only change to shared HAL code
-in this stage is these header guards.
+declarations; setup/loop retain C++ linkage.
 
 The installer creates a self-contained local Arduino package by copying the
 canonical `src/hal`, `src/startup/uc3_startup.S` and
@@ -77,8 +77,16 @@ does not enable its pull-up; use INPUT_PULLUP. These limited semantics are
 documented in [ARDUINO_IDE](ARDUINO_IDE.md).
 
 The current runtime has no global constructors, destructor dispatch, dynamic
-allocation or interrupt abstraction. The shared linker rejects constructor
+allocation or general interrupt abstraction. The shared linker rejects constructor
 sections rather than silently omitting their execution. Sketches use the tested
-historical compiler's C++98 subset, without exceptions, RTTI or STL. Timing,
-Serial and other Arduino facilities remain separate stages; a real hardware
-timer and its interrupt/ownership design are the next step.
+historical compiler's C++98 subset, without exceptions, RTTI or STL.
+
+`wiring_time.cpp` delegates time reads to the C system-timer HAL and waits using
+unsigned elapsed subtraction. TC0/INTC group 14 are reserved. The private
+hardware adapter owns register access and interrupt masking; the C logic owns
+the two epochs and coherent CV/status snapshots. Short critical sections preserve
+the caller's mask, and conversion runs after restoring it. Native tests execute
+the real C logic with scripted register events and the real C++ wait wrappers
+with a wrapping clock. They do not simulate AVR32 hardware. See [TIMING](TIMING.md)
+for service-latency, precision and clock-change constraints. HardwareSerial is
+the next separate stage.

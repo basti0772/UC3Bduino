@@ -2,12 +2,13 @@
 
 Arduino-compatible core for Atmel AVR32 UC3B microcontrollers.
 
-**Stage 2.5 – Arduino IDE compilation smoke test**
+**Stage 3 – Arduino timing foundation**
 
 Arduino CLI now recognizes **UC3Bduino AT32UC3B0256** and builds the supplied
 `.ino` sketches to ELF/HEX/BIN/map files. The minimal C++98 core implements
 `setup()`/`loop()`, `pinMode()`, `digitalWrite()` and `digitalRead()` over the
-existing clock/GPIO HAL. This is an initial compilation integration, not full
+existing clock/GPIO HAL. TC0 now supplies `millis()`, `micros()`, `delay()` and
+`delayMicroseconds()`; see [timing and limits](docs/TIMING.md). This is not full
 Arduino compatibility. IDE GUI and hardware execution remain untested.
 
 Both build paths use the same reset code, memory layout and C HAL for
@@ -150,13 +151,17 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
 - Only undivided internal RC clock initialization is implemented. Board crystal,
   pin wiring and watchdog/fuses are unknown. No PLL, complete board pin mapping, INTC
   dispatch, watchdog servicing or calibrated timing is supplied.
-- Interrupts remain globally masked. Exceptions halt at minimal trap entries.
+- Arduino timer init enables interrupts after configuring TC0 and its vector.
+  Bare-metal examples keep interrupts masked. Exceptions halt at trap entries.
 - C99 and C++98 with legacy AVR32-GCC 4.3.2. Global C++ constructors,
   exceptions, RTTI, heap, libc, and syscalls
   are not supported. Additional UC3B variants require explicit validation.
-- No `delay`, `delayMicroseconds`, `millis`, `micros`, `Serial`, SPI, Wire,
+- Timing uses nominal RC frequency: 1 ms returned granularity for millis,
+  69.44 us counter resolution for micros. Interrupt service must occur within
+  each 10 ms period. Timing accuracy and API latency are not hardware-verified.
+- No `Serial`, SPI, Wire,
   ADC, PWM, USB, interrupt API or Boards Manager distribution. The next stage
-  is a real hardware-timer timebase.
+  is HardwareSerial/UART.
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and
 [THIRD_PARTY](docs/THIRD_PARTY.md). Original project files use the [MIT license](LICENSE).
