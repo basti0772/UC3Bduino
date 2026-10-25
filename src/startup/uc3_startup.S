@@ -13,6 +13,9 @@
 .type _start, @function
 _start:
     ssrf UC_SR_GM_BIT
+    /* 32059L, section 31.2.4 (Rev B): two NOPs after masking interrupts. */
+    nop
+    nop
     lda.w sp, __stack_top__
     lda.w r8, __exception_vectors
     mtsr UC_SYSREG_EVBA, r8
