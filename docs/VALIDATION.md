@@ -1,5 +1,10 @@
 # Validation record
 
+For the current **Stage 2.5 – Arduino IDE compilation smoke test**, see
+[TESTING](TESTING.md): actual CLI builds, installer checks, regression builds
+and the explicit distinction between CLI, IDE GUI and hardware results.
+The records below describe earlier stages.
+
 ## Stage 2 — executed on 2026-10-25
 
 **Build tested: yes. Hardware tested: no.** No firmware was flashed and no

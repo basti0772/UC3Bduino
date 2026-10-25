@@ -2,16 +2,18 @@
 
 Arduino-compatible core for Atmel AVR32 UC3B microcontrollers.
 
-**Stage 2 – Clock / GPIO / hardware basics**
+**Stage 2.5 – Arduino IDE compilation smoke test**
 
-**Arduino API is not implemented yet.**
+Arduino CLI now recognizes **UC3Bduino AT32UC3B0256** and builds the supplied
+`.ino` sketches to ELF/HEX/BIN/map files. The minimal C++98 core implements
+`setup()`/`loop()`, `pinMode()`, `digitalWrite()` and `digitalRead()` over the
+existing clock/GPIO HAL. This is an initial compilation integration, not full
+Arduino compatibility. IDE GUI and hardware execution remain untested.
 
-The long-term goal is an Arduino-compatible UC3B core. This stage builds a small
-freestanding C program for **AT32UC3B0256** only. It initializes the stack,
-copies `.data`, clears `.bss`, and calls `main()`. A small internal HAL selects
-the undivided internal RC clock and provides checked GPIO input/output,
-set/clear/toggle, pad reads and pull-ups. No operating system, C library,
-Atmel Software Framework (ASF), or board package is linked.
+Both build paths use the same reset code, memory layout and C HAL for
+**AT32UC3B0256** only. Startup initializes the stack, copies `.data`, clears
+`.bss`, and calls `main()`. The clock uses undivided internal RC. No operating
+system, C library or Atmel Software Framework (ASF) is linked.
 
 ## Requirements
 
@@ -19,7 +21,9 @@ Atmel Software Framework (ASF), or board package is linked.
 - A **legacy Atmel AVR32 GNU toolchain**. The tested compiler is
   `avr32-gcc 4.3.2 (atmel-1.2.0-(mingw32_special))`, with binutils
   `2.19.20081016`. Use AVR32 tools, not the similarly named 8-bit AVR tools.
-- GNU Make 3.81 or newer (`make.exe` or `mingw32-make.exe`). The tested historical
+- Companion `avr32-g++` and `avr32-ar` for the Arduino build. Arduino CLI
+  1.5.2-rc.1 was tested; the Arduino IDE 2.x installation procedure is documented.
+- For bare-metal builds: GNU Make 3.81 or newer (`make.exe` or `mingw32-make.exe`). The tested historical
   toolchain already includes Make 3.81.
 - Optional: Python 3.8+ for artifact validation; it is not needed to build.
 
@@ -28,7 +32,35 @@ Obtain the toolchain separately from the
 No compiler binaries, vendor headers, or third-party runtime sources are bundled.
 See [toolchain details and flags](docs/TOOLCHAIN.md).
 
-## Build on Windows
+## Arduino compilation on Windows
+
+Use the actual sketchbook path from IDE Preferences or
+`arduino-cli config get directories.user`. Install into a fresh destination:
+
+```powershell
+$env:AVR32_TOOLCHAIN_PATH = 'D:\Tools\avr32-toolchain' # replace with your installation
+.\scripts\install-arduino-hardware.ps1 -SketchbookPath 'D:\ArduinoSketchbook'
+```
+
+The installer copies the platform template and unchanged shared HAL/startup/linker
+files. It records their hashes and writes a local compiler-path override; it
+refuses to overwrite an existing package. Restart Arduino IDE, select
+**UC3Bduino AT32UC3B0256**, open `examples/ArduinoMinimal/ArduinoMinimal.ino`
+and choose **Verify**. For CLI using that same sketchbook:
+
+```powershell
+arduino-cli board listall UC3Bduino
+arduino-cli compile --fqbn uc3bduino:avr32:uc3b0256 --build-path build/arduino/minimal examples/ArduinoMinimal
+python tests/verify_firmware.py build/arduino/minimal --basename ArduinoMinimal.ino
+```
+
+See [ARDUINO_IDE](docs/ARDUINO_IDE.md) for isolated CLI configuration, exact
+installation layout and the `DigitalOutput` example. Its logical `D0` slot needs
+an explicit GPIO mapping; no LED or full board pinout is assumed. Upload is not
+implemented. The [test matrix](docs/TESTING.md) separates executed builds from
+the documented IDE procedure and pending hardware tests.
+
+## Bare-metal build on Windows
 
 From the checkout:
 
@@ -99,8 +131,9 @@ src/startup/uc3_startup.S     original UC startup and exception traps
 src/hal/                    clock and GPIO implementation using installed headers
 linker/at32uc3b0256.ld        device memory layout and stack reservation
 tools/targets/               device compiler selection
-scripts/                    Windows build and clean entry points
-examples/                   minimal, startup-check and configurable gpio-toggle
+arduino/hardware/            local Arduino platform, core and variant template
+scripts/                    Windows build, clean and Arduino installation
+examples/                   bare-metal examples and ArduinoMinimal/DigitalOutput
 tests/                      independent ELF/HEX/BIN inspection
 docs/                       hardware sources, design, roadmap, validation
 ```
@@ -110,18 +143,20 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
 
 ## Current limitations
 
-- **Build verified; hardware execution and flashing untested.** See the exact
-  [validation record](docs/VALIDATION.md) and [hardware assumptions](docs/HARDWARE.md).
+- **CLI builds verified; IDE GUI, hardware execution and flashing untested.** See
+  [TESTING](docs/TESTING.md), the earlier [validation record](docs/VALIDATION.md)
+  and [hardware assumptions](docs/HARDWARE.md).
 - Full-flash reset image; no bootloader reservation or upload support.
 - Only undivided internal RC clock initialization is implemented. Board crystal,
-  pin wiring and watchdog/fuses are unknown. No PLL, board pin mapping, INTC
+  pin wiring and watchdog/fuses are unknown. No PLL, complete board pin mapping, INTC
   dispatch, watchdog servicing or calibrated timing is supplied.
 - Interrupts remain globally masked. Exceptions halt at minimal trap entries.
-- C99 (with a HAL-only extension for vendor anonymous unions). C++ constructors,
-  exceptions, heap, libc, and syscalls
+- C99 and C++98 with legacy AVR32-GCC 4.3.2. Global C++ constructors,
+  exceptions, RTTI, heap, libc, and syscalls
   are not supported. Additional UC3B variants require explicit validation.
-- No `digitalWrite`, `digitalRead`, `pinMode`, `millis`, `micros`, `Serial`,
-  SPI, Wire, ADC, PWM, or Arduino IDE/CLI package.
+- No `delay`, `delayMicroseconds`, `millis`, `micros`, `Serial`, SPI, Wire,
+  ADC, PWM, USB, interrupt API or Boards Manager distribution. The next stage
+  is a real hardware-timer timebase.
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and
 [THIRD_PARTY](docs/THIRD_PARTY.md). Original project files use the [MIT license](LICENSE).

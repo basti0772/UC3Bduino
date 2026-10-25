@@ -2,7 +2,7 @@
 
 ## Tested baseline
 
-The actual Stage 1 and Stage 2 builds used this locally installed Windows toolset:
+Stages 1, 2 and 2.5 used this locally installed Windows toolset:
 
 | Program | Observed version / use |
 | --- | --- |
@@ -11,7 +11,8 @@ The actual Stage 1 and Stage 2 builds used this locally installed Windows toolse
 | `avr32-objcopy`, `avr32-size` | Same binutils installation; HEX/BIN conversion and size report |
 | GNU Make | 3.81, `i386-pc-mingw32` |
 | `avr32-readelf`, `avr32-objdump`, `avr32-nm` | Same installation; optional inspection tools |
-| `avr32-g++` | Companion C++ compiler; not invoked by this stage |
+| `avr32-g++` | 4.3.2, same Atmel build; C++98 sketches/core and Arduino link driver in Stage 2.5 |
+| Arduino CLI | 1.5.2-rc.1, commit `fef6e48df`; Stage 2.5 discovery and sketch builds |
 
 The package installer version was not established from the installed executables;
 the compiler/binutils build strings above identify what was actually tested.
@@ -66,7 +67,7 @@ Use the matching `avr32-*` utilities to inspect these old ELFs.
 | `-ffunction-sections -fdata-sections` | Allow unused functions/data to be removed |
 | `-muse-rodata-section` | Keep read-only data in `.rodata` |
 | `-Wall -Wextra -Werror` | Strict diagnostics supported by GCC 4.3.2 |
-| `-fms-extensions` (HAL only) | Enable anonymous struct/union fields in official Atmel headers under GCC 4.3 C99 |
+| `-fms-extensions` (Make HAL objects; Arduino C recipe) | Enable anonymous struct/union fields in official Atmel headers under GCC 4.3 C99 |
 | `-MMD -MP` | Local header dependency files |
 | `-nostdlib -nostartfiles` | Exclude vendor CRT, libc and default libraries (including libgcc) |
 | `-Tlinker/at32uc3b0256.ld` | Explicit project memory and section layout |
@@ -90,15 +91,38 @@ The HAL includes installed `avr32/uc3b0256.h` directly, after checking the
 compiler's target macro. This transitively includes PM/GPIO and other module
 definitions. Anonymous unions in these headers require `-fms-extensions` with
 the tested C99 compiler; without it GCC reports missing register members.
-The option is confined to HAL objects, not a global warning suppression.
+Make confines the option to HAL objects. The Arduino C recipe uses it for all C
+sources because recipes select by language, not source directory. C++ uses its
+own flags. This enables a language extension; it does not suppress warnings.
 `uc3b_device.h` checks used register offsets and bank stride at compile time.
 See [THIRD_PARTY](THIRD_PARTY.md) for versions, hashes and notices.
 
-Build dependencies are the standalone AVR32 toolchain, GNU Make, and PowerShell.
+Bare-metal build dependencies are the standalone AVR32 toolchain, GNU Make, and PowerShell.
 Installed standard headers `stdint.h` (Newlib) and `stdbool.h` (GCC) provide
 types; no runtime library is linked. No ASF, Studio project, IDE, separate SDK
 download or Python is required for firmware builds. The ELF verifier uses only
 Python's standard library.
+
+## Arduino C++98 build
+
+The local platform reuses the target, optimization, section, diagnostic and
+freestanding flags above. Its C++ recipe adds `-std=c++98`, `-fno-exceptions`,
+`-fno-rtti`, `-fno-threadsafe-statics` and `-fno-use-cxa-atexit`. No modern C++
+features or STL are assumed. Nontrivial global/static object initialization is
+unsupported; the linker rejects constructor sections, and no allocation or
+destructor runtime is supplied.
+
+Arduino CLI handles .ino preprocessing and prototype generation. `avr32-ar`
+builds `core.a`; the G++ link driver uses `--undefined=_start` and an archive
+group to retain the shared reset/main chain. `-nostdlib -nostartfiles` still
+excludes automatic libraries and CRT. The original linker script remains the
+authority for flash/SRAM layout and constructor rejection.
+
+The installer resolves `AVR32_TOOLCHAIN_PATH`, an explicit `-ToolchainPath`, or
+PATH into a generated `platform.local.txt`. No compiler distribution is bundled.
+Arduino CLI's own indexes and builtin preprocessing tools are external setup
+requirements; GNU Make is not used by this path. See
+[installation](ARDUINO_IDE.md) and [executed checks](TESTING.md).
 
 ## Why Make
 
