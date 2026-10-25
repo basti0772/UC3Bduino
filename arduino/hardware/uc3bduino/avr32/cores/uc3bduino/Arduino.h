@@ -24,6 +24,7 @@ void delayMicroseconds(unsigned int us);
 /* Sketch functions use C++ linkage; the startup entry main uses C linkage. */
 void setup(void);
 void loop(void);
+#include "HardwareSerial.h"
 #endif
 
 #include "pins_arduino.h"
