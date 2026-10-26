@@ -10,8 +10,8 @@ from pathlib import Path
 import struct
 
 
-FLASH_START = 0x80000000
-FLASH_END = FLASH_START + 256 * 1024
+FLASH_START = 0x80002000
+FLASH_END = 0x80040000
 SRAM_END = 32 * 1024
 SHT_NOBITS = 8
 SHF_ALLOC = 2
@@ -80,7 +80,7 @@ def verify(directory, startup_check, basename="firmware"):
         if not flags & SHF_ALLOC or size == 0:
             continue
         if section_type == SHT_NOBITS:
-            require(0 <= address < address + size <= SRAM_END, "NOBITS outside SRAM")
+            require(4 <= address < address + size <= SRAM_END, "NOBITS outside application SRAM")
             continue
         matches = [p for p in segments if p[0] == 1
                    and p[2] <= address and address + size <= p[2] + p[4]
@@ -88,6 +88,9 @@ def verify(directory, startup_check, basename="firmware"):
         require(len(matches) == 1, "Allocated section has no unique file-backed load segment")
         segment = matches[0]
         load = segment[3] + address - segment[2]
+        require(FLASH_START <= address < address + size <= FLASH_END or
+                4 <= address < address + size <= SRAM_END,
+                "Allocated section outside application memory")
         require(FLASH_START <= load < load + size <= FLASH_END, "Load image outside flash")
         for index, value in enumerate(elf[offset:offset + size]):
             require(load + index not in expected_flash, "Overlapping load sections")
@@ -122,7 +125,7 @@ def verify(directory, startup_check, basename="firmware"):
 
     if startup_check:
         data = by_name[".data"]
-        require(data[3] == 0 and data[5] == 8, "Smoke fixture .data layout changed")
+        require(data[3] == 4 and data[5] == 8, "Smoke fixture .data layout changed")
         require(elf[data[4]:data[4] + 7] == bytes((3, 5, 7, 11, 13, 17, 19)),
                 "Smoke fixture initializer missing from flash image")
         require(by_name[".bss"][5] >= 11, "Smoke fixture .bss was discarded")

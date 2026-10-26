@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT
  * AT32UC3B0256 only: 32059L, sections 6.5, 7.1/7.2, 8.2.
- * Full-flash image; no bootloader offset, user page, or fuse programming.
+ * Factory USB DFU application: AVR32784 section 6 (doc7745).
+ * DO NOT overwrite the factory USB DFU bootloader.
  */
 OUTPUT_FORMAT("elf32-avr32", "elf32-avr32", "elf32-avr32")
 OUTPUT_ARCH(avr32:uc)
@@ -8,8 +9,9 @@ ENTRY(_start)
 
 MEMORY
 {
-    FLASH (rx)  : ORIGIN = 0x80000000, LENGTH = 256K
-    SRAM  (rwx) : ORIGIN = 0x00000000, LENGTH = 32K
+    FLASH (rx)  : ORIGIN = 0x80002000, LENGTH = 248K
+    /* First word is the bootloader's ISPK warm-reset key. */
+    SRAM  (rwx) : ORIGIN = 0x00000004, LENGTH = 32K - 4
 }
 
 /* Project policy, not a hardware requirement: reserve 1 KiB for the stack. */
