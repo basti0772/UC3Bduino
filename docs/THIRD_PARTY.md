@@ -10,6 +10,17 @@ references in [HARDWARE](HARDWARE.md); vendor documents are linked, not bundled.
 
 ## External tools and reviewed headers
 
+Stage 5 uses separately installed **dfu-programmer 1.1.0** (GPL-2.0-or-later),
+with its shipped libusb and runtime licenses. No executable, DLL or source is
+redistributed here. `src/arguments.c`, `commands.c`, `atmel.c`, `dfu.c` and
+`intel_hex.c` were inspected as protocol/CLI references; no implementation code
+was copied. Release/source links are in [DFU_UPLOAD](DFU_UPLOAD.md).
+Legacy Atmel `conf_isp.h` / `usb_dfu.c` (Atmel BSD-style three-clause notices)
+and ASF `common/services/isp/flip/uc3/isp.c` (Microchip restricted product-use
+license in the inspected revision) were consulted for signature formats only.
+No source from those files was imported. The PowerShell uploader is original
+project code; chip IDs and protocol facts are documented with source links.
+
 The legacy Atmel AVR32 GNU distribution includes GCC, binutils, GNU Make,
 Newlib and vendor device support. These components retain their own licenses.
 They are installed separately and are not relicensed by this project's MIT file.

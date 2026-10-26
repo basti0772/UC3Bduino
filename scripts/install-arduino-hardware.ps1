@@ -2,9 +2,11 @@
 #Requires -Version 5.1
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$SketchbookPath,
+    [string]$SketchbookPath = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Arduino'),
     [string]$ToolchainPath = $env:AVR32_TOOLCHAIN_PATH,
+    [string]$DfuToolPath = $env:UC3B_DFU_TOOL_PATH,
+    [ValidateSet('Unconfirmed','AT32UC3B0256')]
+    [string]$LegacyDevice = 'Unconfirmed',
     [ValidateSet('A', 'B')]
     [string]$GpioPort,
     [ValidateRange(0, 31)]
@@ -24,6 +26,10 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
 try {
+    . (Join-Path $PSScriptRoot 'dfu-common.ps1')
+    $dfuTool = 'auto'
+    # Compile-only installation remains possible without an upload tool.
+    if ($DfuToolPath) { $dfuTool = Resolve-DfuTool $DfuToolPath }
     $sketchbook = [IO.Path]::GetFullPath($SketchbookPath)
     $destination = Join-Path $sketchbook 'hardware/uc3bduino/avr32'
     if (Test-Path -LiteralPath $destination) {
@@ -113,7 +119,10 @@ try {
         @{ Source = 'LICENSE'; Target = 'LICENSE' },
         @{ Source = 'docs/THIRD_PARTY.md'; Target = 'docs/THIRD_PARTY.md' },
         @{ Source = 'docs/THIRD_PARTY_NOTICES.md'; Target = 'docs/THIRD_PARTY_NOTICES.md' },
-        @{ Source = 'docs/DEVICE_HEADERS.md'; Target = 'docs/DEVICE_HEADERS.md' }
+        @{ Source = 'docs/DEVICE_HEADERS.md'; Target = 'docs/DEVICE_HEADERS.md' },
+        @{ Source = 'scripts/upload-dfu.ps1'; Target = 'tools/upload-dfu.ps1' },
+        @{ Source = 'scripts/dfu-common.ps1'; Target = 'tools/dfu-common.ps1' },
+        @{ Source = 'docs/DFU_UPLOAD.md'; Target = 'docs/DFU_UPLOAD.md' }
     )
     foreach ($entry in $shared) {
         if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $entry.Source) -PathType Leaf)) {
@@ -121,7 +130,7 @@ try {
         }
     }
 
-    if ($PSCmdlet.ShouldProcess($destination, 'Install local UC3Bduino compilation package')) {
+    if ($PSCmdlet.ShouldProcess($destination, 'Install local UC3Bduino build and DFU upload package')) {
         New-Item -ItemType Directory -Path $destination -Force | Out-Null
         Get-ChildItem -LiteralPath $template | ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $destination -Recurse
@@ -136,6 +145,7 @@ try {
         }
         $utf8 = New-Object Text.UTF8Encoding($false)
         $localConfig = "# Generated local path; re-run installation after moving the toolchain.`ncompiler.path=$($binDirectory.Replace('\','/'))/`n"
+        $localConfig += "tools.uc3bdfu.path=$($dfuTool.Replace('\','/'))`ntools.uc3bdfu.legacy_device=$LegacyDevice`n"
         [IO.File]::WriteAllText((Join-Path $destination 'platform.local.txt'), $localConfig, $utf8)
         $buildFlags = "-DSERIAL_RX_BUFFER_SIZE=$SerialRxBufferSize"
         $boardConfig = "# Generated explicit board options. Verify hardware before flashing.`n"
@@ -162,6 +172,8 @@ try {
         if (-not $hasPin) { Write-Host 'D0 is unconfigured. ArduinoMinimal builds; DigitalOutput requires an explicit pin mapping.' }
         if (-not $SerialRoute) { Write-Host 'Serial is unconfigured; begin() leaves it inactive until a verified route is selected.' }
         if (-not $hasOsc) { Write-Host 'Internal RC selected. 115200 baud requires an explicitly configured faster clock.' }
+        Write-Host 'Factory DFU requires its own supported OSC0 hardware (8/12/16 MHz crystal), even for RC-clocked sketches.'
+        if ($dfuTool -eq 'auto') { Write-Host 'DFU tool path not recorded; uploads resolve UC3B_DFU_TOOL_PATH or PATH in the IDE process.' }
     }
 } catch {
     Write-Error -ErrorAction Continue "Arduino hardware installation failed: $($_.Exception.Message)"
