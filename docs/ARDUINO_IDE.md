@@ -1,4 +1,4 @@
-# Local Arduino installation (Stage 5 – USB DFU upload)
+# Local Arduino installation (Stage 6 – USB DFU and CDC)
 
 The local package exposes **UC3Bduino AT32UC3B0256**, with FQBN
 `uc3bduino:avr32:uc3b0256`. It provides a small C++98 core, `setup()`/`loop()`,
@@ -6,7 +6,9 @@ The local package exposes **UC3Bduino AT32UC3B0256**, with FQBN
 the existing C HAL. Stage 3 adds hardware-backed time APIs and Blink/MillisTest/
 MicrosPulse; see [TIMING](TIMING.md). Stage 4 adds HardwareSerial/Print and three
 Serial sketches; configure their pins and clock as described in [SERIAL](SERIAL.md).
-Stage 5 integrates the factory DFU uploader. Hardware execution remains untested.
+Stage 5 integrates the factory DFU uploader. Stage 6 adds native SerialUSB;
+configure authorized VID/PID and supported OSC0 as in [USB_CDC](USB_CDC.md).
+Hardware execution remains untested.
 See [TESTING](TESTING.md) for the distinction between CLI and GUI results.
 
 ## Install locally on Windows
@@ -56,7 +58,8 @@ Installation creates `<Sketchbook>/hardware/uc3bduino/avr32/`, containing:
 
 - `boards.txt`, `platform.txt`, and generated `platform.local.txt` / `boards.local.txt`.
 - `cores/uc3bduino/Arduino.h`, `main.cpp`, `wiring_digital.cpp`, `wiring_time.cpp`.
-- `Print` and `HardwareSerial` headers/implementations, plus variant `serial_config.h`.
+- `Print`, `HardwareSerial` and `USBSerial`, plus variant `serial_config.h`.
+- Exact copies of `src/usb/*` under the core's `usb/`, including `usb_config.h`.
 - Exact copies of `src/hal/*` under the core's `hal/` and the existing startup
   under `startup/`, plus the existing linker script under `system/`.
 - The `uc3b0256` variant, project license and external header notices.
@@ -75,7 +78,7 @@ restricted, use the README's one-process PowerShell execution-policy override.
 
 1. Install into the sketchbook actually selected in Preferences, then restart IDE.
 2. Open `examples/ArduinoMinimal/ArduinoMinimal.ino` from this checkout.
-3. Select **Tools > Board > UC3Bduino AVR32 (factory USB DFU) >
+3. Select **Tools > Board > UC3Bduino AVR32 (USB DFU and CDC) >
    UC3Bduino AT32UC3B0256**. Alternatively use the board selector's other-board
    dialog. A port is not needed for compilation.
 4. Click **Verify**. Expected artifacts are `<SketchName>.ino.elf`, `.hex`, `.bin`
@@ -86,7 +89,9 @@ restricted, use the README's one-process PowerShell execution-policy override.
    [DFU_UPLOAD](DFU_UPLOAD.md). Connect only one UC3B DFU device.
 7. Click **Upload**. The recipe checks image, identity and protection, erases the
    application, programs and reads it back, then requests reset/start.
-8. Observe D0. No serial port appears afterward in Stage 5; CDC follows later.
+8. Observe D0. Plain Blink does not initialize USB. For a CDC port, use
+   USBSerialBlink with authorized identity/OSC0 settings, select the newly
+   enumerated COM port and open Serial Monitor. See [USB_CDC](USB_CDC.md).
 
 This is the documented IDE workflow, not a claim of a GUI test. The CLI uses
 the same package recipes. The tool discovers the DFU USB address; do not select

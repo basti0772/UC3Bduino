@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current: Stage 5 – Arduino USB DFU upload**
+**Current: Stage 6 – USB CDC / SerialUSB**
 
 Each stage should have its own review and validation. A checked build is not a
 claim of working peripherals or Arduino compatibility.
@@ -27,13 +27,16 @@ claim of working peripherals or Arduino compatibility.
    dfu-programmer workflow, shared manual/CLI/IDE recipe and Blink procedure.
    Local build/host checks are recorded separately from pending board tests in
    [TESTING](TESTING.md); see [DFU_UPLOAD](DFU_UPLOAD.md).
-6. **USB CDC / SerialUSB** — next: validated 48 MHz USB clock/PLL, USB device
-   initialization and enumeration, CDC ACM virtual COM port, SerialUSB API.
-7. **Packaging / easy installation** — versioned tools/core distributions,
+6. **USB CDC / SerialUSB** — build and host logic verified: separate PLL1/GCLK3
+   at 48 MHz, USBB device driver, EP0/CDC ACM, static rings and shared Print API.
+   VID/PID must be supplied by the developer. Physical enumeration/Windows COM,
+   TX/RX and DFU transition remain untested; see [USB_CDC](USB_CDC.md).
+7. **Packaging / easy installation** — next: versioned tools/core distributions,
    checksums, simple setup and Boards Manager installation.
 
 Later: ADC / analogRead, SPI, Wire / I2C, PWM / analogWrite, external interrupts,
-EEPROM, additional UARTs, wider Arduino compatibility and hardware regression tests.
+EEPROM / persistent storage, additional UARTs, USB improvements, wider Arduino
+compatibility and hardware regression tests.
 
 Board variants and package expansion accompany these stages as verified wiring
 and toolchain support become available.

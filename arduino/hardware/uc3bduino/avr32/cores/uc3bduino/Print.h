@@ -5,7 +5,7 @@
 
 /* Minimal decimal Print subset. A callback avoids a vtable/global constructor
  * on the reset-only core. Derived sinks must assign write_byte_ before use;
- * the sole supported Serial instance starts zero-initialized in .bss.
+ * the supported global Serial/SerialUSB instances start zeroed in .bss.
  * This is not the full virtual Arduino Print subclass ABI.
  */
 class Print {

@@ -1,5 +1,84 @@
 # Test record
 
+## Stage 6 – USB CDC / SerialUSB
+
+Executed **2026-10-26**, Windows, AVR32 GCC/G++ 4.3.2, binutils 2.19.20081016,
+Arduino CLI 1.5.2-rc.1, PowerShell 5.1 and MSVC 14.51.36231. Target builds use
+`-Wall -Wextra -Werror`; native tests `/W4 /WX`. No UC3B board or USB bus analyzer
+was available. **COMPILE PASS; STATIC REVIEW PASS; HARDWARE NOT TESTED.**
+
+Target images retain VID/PID zero and cannot attach. The descriptor identity is
+read at runtime, so the complete USB path is still linked/checked in these builds.
+Only the native fake transport uses synthetic IDs. Compilation fixture: 12 MHz
+OSC0 crystal, D0=PA03, Serial=U0C. These are not claims about the user's board.
+
+| Check | Status | Evidence / limits |
+| --- | --- | --- |
+| USB clock configuration | COMPILE PASS / HOST PASS | 8/12/16 MHz PLL1→48 MHz; native register fixture checks lock timeout, missing oscillator, foreign ownership and unchanged CPU/bus clock selectors; RC/10 MHz rejected for USB |
+| USB device build | COMPILE PASS | Full driver/core/CDC/SerialUSB compiled and linked with installed device-header ABI assertions |
+| Twelve Arduino examples | COMPILE PASS | ArduinoMinimal, DigitalOutput, Blink, MillisTest, MicrosPulse, SerialHello, SerialMillis, SerialEcho, GpioSmoke and USBSerialHello/Echo/Blink |
+| USB/UART/timing/GPIO combined | COMPILE PASS | Integration fixture links both Serial objects, flush/end/rebegin, GPIO, micros/millis and both delay APIs at 8 MHz, 16 MHz and RC; RC intentionally cannot run USB or 115200 UART |
+| Bare-metal regression | COMPILE PASS | minimal, gpio-toggle, startup-check; existing sizes unchanged |
+| Firmware layout | PASS | All ELF/HEX/BIN images independently checked; entry 0x80002000, bootloader excluded, SRAM word zero reserved, 1 KiB stack, no undefined runtime symbols |
+| DFU image preflight | PASS | Production CheckOnly accepts all three USB HEX files; no USB commands or physical writes sent |
+| Device descriptor | HOST PASS / STATIC REVIEW PASS | Bytes/length/class, short requests and missing serial tested; no physical GET_DESCRIPTOR observed |
+| Configuration descriptor | HOST PASS / STATIC REVIEW PASS | 67 bytes, two interfaces, 64+3 packet split, endpoint addresses and packet sizes |
+| EP0 control | HOST PASS | Read/write/status, no-data IN status, exact/full packet ZLP, early OUT, new SETUP abort, deferred address, configuration failures, stalls and halt requests |
+| CDC class requests | HOST PASS | Line coding round trip/validation, coalesced status/new SETUP, DTR/RTS, SERIAL_STATE changes, unsupported requests stall |
+| RX/TX buffers and flush | HOST PASS | Wrap/full, whole-packet backpressure predicate/re-enable, batched TX, ACK wait, final ZLP, short writes, timeout, RX preservation |
+| SerialUSB API | HOST PASS | begin overloads, reused Print/CRLF/decimal conversion, binary writes, short counts, read/peek/flush/end |
+| USB reset/suspend/reconnect logic | HOST PASS | Portable state/queues reset, suspension preserves state, end/begin and reconfiguration; no electrical/MMIO simulation |
+| ISR/vector | STATIC REVIEW PASS | EVBA+0x10c at 0x8000230c reaches strong USB ISR; 64-byte local packet buffer, register save/restore, acknowledgement read + three NOPs, rete; timer/UART slots intact |
+| UART/Print/timing regression | HOST PASS | Existing UART suites at RX sizes 2/64/256, Print/API and both timing suites rerun successfully |
+| Installer | PASS | Incomplete/zero/oversized IDs, RC and unsupported USB oscillator rejected before writes; configured/unconfigured WhatIf writes nothing |
+| Installed snapshot | PASS | 29 shared-source hashes match canonical sources and manifest; Arduino API copies also match |
+| Physical USB clock | HARDWARE NOT TESTED | No frequency/jitter/lock measurement |
+| USB enumeration / CDC ACM enumeration | HARDWARE NOT TESTED | No host bus enumeration capture |
+| Windows 11 COM port | HARDWARE NOT TESTED | Expected usbser binding documented from Microsoft; no COM port observed |
+| SerialUSB TX / RX / Echo | HARDWARE NOT TESTED | No physical payload exchange or sustained duplex test |
+| USB disconnect/reconnect / reset / suspend/resume | HARDWARE NOT TESTED | VBUS, bank state, clock and host behavior need board validation |
+| DFU → CDC transition | HARDWARE NOT TESTED | Detach/reset/attach implemented; actual re-enumeration pending |
+| CDC with Blink running | HARDWARE NOT TESTED | No waveform, ISR latency, stack high-water or timing-under-load measurement |
+| Arduino Serial Monitor | HARDWARE NOT TESTED | Usage documented; no board/GUI exchange |
+| USB power compliance | HARDWARE NOT TESTED | Clocks intentionally keep running in suspend; board-specific current reduction/measurement remains necessary |
+
+Eight USB host-test executables exercise production portable sources or the
+actual Arduino adapter with a fake transport, and the production clock HAL with
+a volatile register fixture. They do not emulate USBB FIFO side effects,
+physical ACK timing, AVR32 interrupt propagation or the PLL. Reproduce in a
+Visual Studio x64 Native Tools prompt from the repository root:
+
+```bat
+tests\run-usb-host-tests.cmd
+```
+
+Build with a fresh installed package as in [USB_CDC](USB_CDC.md), then:
+
+```powershell
+arduino-cli compile --fqbn uc3bduino:avr32:uc3b0256 --build-path build/arduino/USBSerialBlink examples/USBSerialBlink
+python tests/verify_firmware.py build/arduino/USBSerialBlink --basename USBSerialBlink.ino
+avr32-size build/arduino/USBSerialBlink/USBSerialBlink.ino.elf
+```
+
+Final 12 MHz sizes (bytes): `text + data` is occupied content; BIN includes the
+startup/vector alignment gap. RAM here includes the reserved 1024-byte stack,
+not a measured stack high-water mark.
+
+| Sketch | text / Flash content | data | bss / RAM reservation | BIN span |
+| --- | ---: | ---: | ---: | ---: |
+| Blink | 1832 | 0 | 1036 | 2256 |
+| SerialHello | 2276 | 0 | 1120 | 2700 |
+| SerialMillis | 2588 | 0 | 1120 | 3012 |
+| USBSerialHello | 6812 | 0 | 1416 | 7236 |
+| USBSerialEcho | 6572 | 0 | 1416 | 6996 |
+| USBSerialBlink | 7400 | 0 | 1416 | 7824 |
+
+USB examples reserve 392 bytes of static SRAM plus the 1 KiB stack; DPRAM uses
+another 208 bytes in the controller, separate from the MCU SRAM figure. Existing
+nine Arduino and three bare-metal resource sizes remain unchanged from Stage 5.
+The integration fixture is 9048/0/1504 at both 8/16 MHz and 8892/0/1504 on RC.
+No hardware test is promoted to PASS by these build/host results.
+
 ## Stage 5 – Arduino USB DFU upload
 
 Executed **2026-10-26** on Windows with PowerShell 5.1, AVR32 GCC/G++ 4.3.2,

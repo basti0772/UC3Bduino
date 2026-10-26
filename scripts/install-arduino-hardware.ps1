@@ -18,7 +18,11 @@ param(
     [ValidateRange(400000, 16000000)]
     [int]$Osc0Hz,
     [ValidateSet('External', 'Crystal')]
-    [string]$Osc0Mode
+    [string]$Osc0Mode,
+    [ValidateRange(1, 65535)]
+    [int]$UsbVendorId,
+    [ValidateRange(1, 65535)]
+    [int]$UsbProductId
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,6 +67,13 @@ try {
     }
     if ($hasOsc -and ($Osc0Hz % 800 -ne 0)) {
         throw 'OSC0 frequency must be divisible by 800 for the existing 100 Hz timebase.'
+    }
+    $hasUsb = $PSBoundParameters.ContainsKey('UsbVendorId')
+    if ($hasUsb -ne $PSBoundParameters.ContainsKey('UsbProductId')) {
+        throw 'Supply both -UsbVendorId and -UsbProductId, using IDs you are authorized to use.'
+    }
+    if ($hasUsb -and (-not $hasOsc -or $Osc0Hz -notin @(8000000,12000000,16000000))) {
+        throw 'USB CDC requires a verified 8, 12 or 16 MHz OSC0 clock and its mode.'
     }
     if ($hasOsc -and $SerialRoute -eq 'U0A') {
         throw 'U0A RX uses PA18/XIN0 and conflicts with OSC0. Select another verified route.'
@@ -114,6 +125,14 @@ try {
         @{ Source = 'src/hal/uc3b_uart.h'; Target = 'cores/uc3bduino/hal/uc3b_uart.h' },
         @{ Source = 'src/hal/uc3b_uart.c'; Target = 'cores/uc3bduino/hal/uc3b_uart.c' },
         @{ Source = 'src/hal/uc3b_uart_hw.h'; Target = 'cores/uc3bduino/hal/uc3b_uart_hw.h' },
+        @{ Source = 'src/usb/usb_config.h'; Target = 'cores/uc3bduino/usb/usb_config.h' },
+        @{ Source = 'src/usb/uc3b_usb_device.c'; Target = 'cores/uc3bduino/usb/uc3b_usb_device.c' },
+        @{ Source = 'src/usb/uc3b_usb_device.h'; Target = 'cores/uc3bduino/usb/uc3b_usb_device.h' },
+        @{ Source = 'src/usb/usb_device_core.c'; Target = 'cores/uc3bduino/usb/usb_device_core.c' },
+        @{ Source = 'src/usb/usb_device_core.h'; Target = 'cores/uc3bduino/usb/usb_device_core.h' },
+        @{ Source = 'src/usb/usb_cdc.c'; Target = 'cores/uc3bduino/usb/usb_cdc.c' },
+        @{ Source = 'src/usb/usb_cdc.h'; Target = 'cores/uc3bduino/usb/usb_cdc.h' },
+        @{ Source = 'docs/USB_CDC.md'; Target = 'docs/USB_CDC.md' },
         @{ Source = 'src/startup/uc3_startup.S'; Target = 'cores/uc3bduino/startup/uc3_startup.S' },
         @{ Source = 'linker/at32uc3b0256.ld'; Target = 'system/at32uc3b0256.ld' },
         @{ Source = 'LICENSE'; Target = 'LICENSE' },
@@ -148,6 +167,9 @@ try {
         $localConfig += "tools.uc3bdfu.path=$($dfuTool.Replace('\','/'))`ntools.uc3bdfu.legacy_device=$LegacyDevice`n"
         [IO.File]::WriteAllText((Join-Path $destination 'platform.local.txt'), $localConfig, $utf8)
         $buildFlags = "-DSERIAL_RX_BUFFER_SIZE=$SerialRxBufferSize"
+        if ($hasUsb) {
+            $buildFlags += " -DUC3BDUINO_USB_VENDOR_ID=$UsbVendorId -DUC3BDUINO_USB_PRODUCT_ID=$UsbProductId"
+        }
         $boardConfig = "# Generated explicit board options. Verify hardware before flashing.`n"
         if ($hasOsc) {
             $crystal = if ($Osc0Mode -eq 'Crystal') { 1 } else { 0 }
@@ -172,6 +194,7 @@ try {
         if (-not $hasPin) { Write-Host 'D0 is unconfigured. ArduinoMinimal builds; DigitalOutput requires an explicit pin mapping.' }
         if (-not $SerialRoute) { Write-Host 'Serial is unconfigured; begin() leaves it inactive until a verified route is selected.' }
         if (-not $hasOsc) { Write-Host 'Internal RC selected. 115200 baud requires an explicitly configured faster clock.' }
+        if (-not $hasUsb) { Write-Host 'USB VID/PID must be configured by the developer. SerialUSB stays detached until configured.' }
         Write-Host 'Factory DFU requires its own supported OSC0 hardware (8/12/16 MHz crystal), even for RC-clocked sketches.'
         if ($dfuTool -eq 'auto') { Write-Host 'DFU tool path not recorded; uploads resolve UC3B_DFU_TOOL_PATH or PATH in the IDE process.' }
     }

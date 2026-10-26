@@ -1,6 +1,6 @@
 # Architecture direction
 
-**Stage 5 – Arduino USB DFU upload**
+**Stage 6 – USB CDC / SerialUSB**
 
 The single linker now reserves the factory bootloader's first 8 KiB of flash
 and the first SRAM word. `_start` is the application entry at `0x80002000`.
@@ -44,7 +44,7 @@ the clock explicitly in `main`; `startup-check` retains its memory-only purpose.
 All HAL functions compile, while section garbage collection removes unused ones.
 
 The startup and linker contracts remain intact. Two NOPs after masking GM apply
-the documented Rev B erratum. TC0 has an interrupt entry at 0x104 and UART at 0x108;
+the documented Rev B erratum. TC0, UART and USB have entries at 0x104/0x108/0x10c;
 linker assertions enforce EVBA-OR-offset addressing after relocating the image.
 Clock setup is a reset-time operation with interrupts masked. GPIO alias writes
 are atomic per register, but callers serialize configuration/ownership changes.
@@ -61,7 +61,7 @@ then calls `loop()` forever. HAL functions retain C linkage through guarded
 declarations; setup/loop retain C++ linkage.
 
 The installer creates a self-contained local Arduino package by copying the
-canonical `src/hal`, `src/startup/uc3_startup.S` and
+canonical `src/hal`, `src/usb`, `src/startup/uc3_startup.S` and
 `linker/at32uc3b0256.ld` files into Arduino's expected build directories. It records
 SHA-256 hashes in `shared-sources.json`. No duplicate startup or linker source
 is maintained in Git. Shared changes require reinstalling the snapshot. A
@@ -121,3 +121,20 @@ a PLL or live frequency changes. CPU/HSB/PBA/PBB remain equal. U0A conflicts
 with OSC0 and is rejected. Existing default RC behavior and bare-metal builds
 are preserved. See [SERIAL](SERIAL.md) for registers, ownership, wiring, rates,
 callback limitations and pending hardware validation.
+
+## USB CDC
+
+`USBSerial` shares the existing Print sink ABI. `usb_cdc.c` owns line coding,
+control lines and static RX/TX rings; `usb_device_core.c` owns descriptors and
+the EP0 state machine; `uc3b_usb_device.c` owns USBB registers, FIFO allocation,
+interrupt acknowledgement and attach/detach. Central settings are in
+`usb_config.h`. Native tests replace the register transport, exercising the
+actual portable core/class and Arduino adapter separately.
+
+USBB uses INTC group 17/INT2, with bounded packet work and no Arduino formatting.
+The shared clock HAL supplies PLL1/GCLK3 at 48 MHz from explicit 8/12/16 MHz
+OSC0, preserving CPU/bus clocks. No general interrupt dispatcher, ASF, DMA,
+heap, constructor, UART bridge or bootloader transition command is added.
+VID/PID defaults to unconfigured, so no application USB attachment occurs until
+the developer supplies authorized IDs. Details and hardware limits are in
+[USB_CDC](USB_CDC.md).

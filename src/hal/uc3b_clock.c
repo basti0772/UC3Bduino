@@ -85,3 +85,51 @@ uint32_t uc3b_clock_get_pbb_hz(void)
 {
     return UC3B_CONFIGURED_HZ;
 }
+
+static bool usb_clock_active;
+
+void uc3b_clock_disable_usb(void)
+{
+    if (usb_clock_active) {
+        AVR32_PM.gcctrl[AVR32_PM_GCLK_USBB] = 0;
+        AVR32_PM.pll[1] = 0;
+        usb_clock_active = false;
+    }
+}
+
+bool uc3b_clock_enable_usb(void)
+{
+#if UC3B_CLOCK_SOURCE == UC3B_CLOCK_SOURCE_OSC0 && \
+    (UC3B_OSC0_HZ == 8000000UL || UC3B_OSC0_HZ == 12000000UL || UC3B_OSC0_HZ == 16000000UL)
+    uint32_t count;
+    if (usb_clock_active) { return true; }
+    /* Refuse to take PLL1/GCLK3 away from another owner. The reset-based
+     * startup used here leaves them disabled; arbitrary handoff is unsupported.
+     */
+    if ((AVR32_PM.pll[1] & AVR32_PM_PLL1_PLLEN_MASK) != 0
+        || (AVR32_PM.gcctrl[AVR32_PM_GCLK_USBB] & AVR32_PM_GCCTRL_CEN_MASK) != 0
+        || (AVR32_PM.poscsr & AVR32_PM_POSCSR_OSC0RDY_MASK) == 0) { return false; }
+    /* 32059L 9.5.4, 9.6.4, 28.7: DIV=0 -> FIN=OSC0 (4..16 MHz),
+     * FVCO=2*(MUL+1)*OSC0=96 MHz. OPT[0]=low range, OPT[1]=divide by 2.
+     * COUNT=63 slow-clock cycles is the maximum hardware lock qualification.
+     */
+    AVR32_PM.pll[1] = ((48000000UL / UC3B_OSC0_HZ - 1) << AVR32_PM_PLL1_PLLMUL_OFFSET)
+        | (3UL << AVR32_PM_PLL1_PLLOPT_OFFSET) | AVR32_PM_PLL1_PLLCOUNT_MASK
+        | AVR32_PM_PLL1_PLLEN_MASK;
+    for (count = 0; count < 100000UL; ++count) {
+        if (AVR32_PM.poscsr & AVR32_PM_POSCSR_LOCK1_MASK) { break; }
+    }
+    if (count == 100000UL) { AVR32_PM.pll[1] = 0; return false; }
+    AVR32_PM.gcctrl[AVR32_PM_GCLK_USBB] = AVR32_PM_GCCTRL_PLLSEL_MASK
+        | AVR32_PM_GCCTRL_OSCSEL_MASK | AVR32_PM_GCCTRL_CEN_MASK;
+    usb_clock_active = true;
+    return true;
+#else
+    return false; /* Uncalibrated RCSYS is never a USB clock source. */
+#endif
+}
+
+uint32_t uc3b_clock_get_usb_hz(void)
+{
+    return usb_clock_active ? 48000000UL : 0;
+}

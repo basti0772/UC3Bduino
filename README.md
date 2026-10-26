@@ -2,21 +2,25 @@
 
 Arduino-compatible core for Atmel AVR32 UC3B microcontrollers.
 
-**Stage 5 – Arduino USB DFU upload**
+**Stage 6 – USB CDC / SerialUSB**
 
-Arduino Upload now invokes a checked `dfu-programmer 1.1.0` workflow for the
-factory UC3B bootloader. Both build paths start the application at `0x80002000`
-and reserve the first 8 KiB of flash. **DO NOT overwrite the factory USB DFU
-bootloader.** Physical upload/Blink execution still need board validation.
+Native `SerialUSB` adds USB CDC ACM using the integrated device controller,
+EP0 enumeration and static RX/TX buffers. `Serial` remains the hardware USART.
+USB requires verified 8/12/16 MHz OSC0 and authorized developer-configured VID/PID;
+the default unconfigured identity never attaches. **Hardware enumeration/COM
+ports are not tested.** Stage 5's factory DFU upload and protected 8 KiB bootloader
+region remain in place. **DO NOT overwrite the factory USB DFU bootloader.**
 
 ## First test
 
-1. Extract dfu-programmer 1.1.0 and set `UC3B_DFU_TOOL_PATH`.
-2. Install UC3Bduino into the actual IDE sketchbook, explicitly mapping D0 from
-   the board schematic. Check the MCU marking before confirming a legacy target.
-3. Select **UC3Bduino AT32UC3B0256** and open `examples/Blink/Blink.ino`.
-4. Click **Verify**, enter factory DFU mode, then click **Upload**.
-5. After automatic application start, observe the chosen D0/LED.
+1. Install UC3Bduino into the actual IDE sketchbook, configuring OSC0, authorized
+   VID/PID and safe D0 mapping as described in [USB setup](docs/USB_CDC.md).
+2. Configure dfu-programmer 1.1.0; check the MCU marking for a legacy target.
+3. Select **UC3Bduino AT32UC3B0256** and open `USBSerialBlink`.
+4. Click **Verify**, enter factory DFU mode and click **Upload**.
+5. Wait for the application CDC COM port; select it and open Arduino Serial Monitor.
+6. Expect repeated `UC3Bduino alive: ... ms` while D0 toggles at nominal 1 Hz.
+   Test `USBSerialEcho` by sending text back to the board.
 
 See [DFU setup, reset/pin sequence and troubleshooting](docs/DFU_UPLOAD.md)
 and [local IDE installation](docs/ARDUINO_IDE.md) for exact commands. A DFU device
@@ -31,8 +35,10 @@ existing clock/GPIO HAL. TC0 now supplies `millis()`, `micros()`, `delay()` and
 `delayMicroseconds()`; see [timing and limits](docs/TIMING.md). One `Serial`
 object now provides polling TX, interrupt RX and decimal `print/println`,
 including `Serial.println(millis())`. See [Serial setup](docs/SERIAL.md) for
-explicit pin/clock selection. This is a limited Arduino API subset. All nine
-examples compile; IDE GUI and hardware execution remain untested.
+explicit pin/clock selection. `SerialUSB` reuses the same Print implementation;
+see [CDC API, configuration and limits](docs/USB_CDC.md). This is a limited Arduino
+API subset. All twelve Arduino examples compile; IDE GUI and hardware execution
+remain untested.
 
 Both build paths use the same reset code, memory layout and C HAL for
 **AT32UC3B0256** only. Startup initializes the stack, copies `.data`, clears
@@ -162,12 +168,13 @@ and [clock configuration](docs/CLOCK.md). CPU, HSB, PBA and PBB are nominally
 src/main.c                   minimal program
 src/startup/uc3_startup.S     original UC startup and exception traps
 src/hal/                    clock, GPIO, timer and UART using installed headers
+src/usb/                    USBB driver, EP0 device core, CDC and central config
 linker/at32uc3b0256.ld        device memory layout and stack reservation
 tools/targets/               device compiler selection
 arduino/hardware/            local Arduino platform, core and variant template
 scripts/                    Windows build, clean and Arduino installation
-examples/                   three bare-metal and nine Arduino examples
-tests/                      artifact inspection and native timing/serial logic tests
+examples/                   three bare-metal and twelve Arduino examples
+tests/                      artifact inspection and native timing/serial/USB tests
 docs/                       hardware sources, design, roadmap, validation
 ```
 
@@ -183,7 +190,7 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
   signatures need explicit physical MCU confirmation; unknown devices abort.
 - Internal RC remains the default; optional OSC0 accepts an explicit 0.4..16 MHz
   crystal or external clock. Board crystal, pin wiring and watchdog/fuses are
-  unknown. No PLL, complete board pin mapping, general INTC
+  unknown. USB reserves PLL1/GCLK3; no complete board pin mapping, general INTC
   dispatch, watchdog servicing or calibrated timing is supplied.
 - Arduino timer init enables interrupts after configuring TC0 and its vector.
   Bare-metal examples keep interrupts masked. Exceptions halt at trap entries.
@@ -196,8 +203,11 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
 - Serial supports one selected USART, 8N1, polling TX and 63 usable RX bytes
   by default. Pin/clock configuration is required; RX service latency is unmeasured.
   Print supports decimal integers/text, with no full Stream/virtual Print ABI.
-- No SPI, Wire, ADC, PWM, sketch USB/CDC, external-interrupt API or Boards Manager
-  distribution. The next stage is USB CDC / SerialUSB, followed by packaging.
+- USB is a single CDC function with bounded buffering and no automatic DFU reset.
+  Physical enumeration, throughput, interrupt latency and suspend current need
+  board validation. USB VID/PID must be configured by the developer.
+- No SPI, Wire, ADC, PWM, external-interrupt API or Boards Manager distribution.
+  Stage 7 is packaging / easy installation.
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and
 [THIRD_PARTY](docs/THIRD_PARTY.md). Original project files use the [MIT license](LICENSE).

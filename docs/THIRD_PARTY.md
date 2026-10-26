@@ -10,6 +10,26 @@ references in [HARDWARE](HARDWARE.md); vendor documents are linked, not bundled.
 
 ## External tools and reviewed headers
 
+Stage 6 is an original implementation based on the hardware and USB protocol
+documents linked in [USB_CDC](USB_CDC.md). No ASF code was imported. Before
+using ASF as a technical reference, the following files were inspected at
+revision `68cddb46ae5ebc24ef8287a8d4c61a6efa5e2848` of the
+[ASF mirror](https://github.com/avrxml/asf/tree/68cddb46ae5ebc24ef8287a8d4c61a6efa5e2848):
+
+| File | Original license / use |
+| --- | --- |
+| `avr32/drivers/usbb/usbb_device.c` | Microchip 2009–2018 restricted product-use terms; reference only, no code copied |
+| `avr32/drivers/usbb/usbb_device.h` | Same Microchip restricted product-use terms; reference only, no code copied |
+| `common/services/usb/class/cdc/device/udi_cdc_desc.c` | Same Microchip restricted product-use terms; descriptor/reference inspection only, no code copied |
+
+Those notices restrict use of the software and derivatives to Microchip
+products; they are not treated as an unrestricted MIT-compatible grant.
+Register facts, FIFO ordering and USB/CDC encodings were independently checked
+against 32059L and USB-IF specifications. The separately installed `usbb_310.h`
+already belongs to the Stage 2 transitive device-header manifest and BSD-style
+notice review below. Vendor specifications and downloaded reference sources
+are not redistributed in this repository.
+
 Stage 5 uses separately installed **dfu-programmer 1.1.0** (GPL-2.0-or-later),
 with its shipped libusb and runtime licenses. No executable, DLL or source is
 redistributed here. `src/arguments.c`, `commands.c`, `atmel.c`, `dfu.c` and

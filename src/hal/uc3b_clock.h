@@ -3,6 +3,7 @@
 #define UC3B_CLOCK_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +40,14 @@ uint32_t uc3b_clock_get_cpu_hz(void);
 uint32_t uc3b_clock_get_hsb_hz(void);
 uint32_t uc3b_clock_get_pba_hz(void);
 uint32_t uc3b_clock_get_pbb_hz(void);
+
+/* Own PLL1 and GCLK3 exclusively. OSC0 8/12/16 MHz only, within USB tolerance.
+ * No CPU/bus divider changes. Call in foreground after clock_init().
+ * Bounded failure leaves USB off. disable is safe after an unsuccessful enable.
+ */
+bool uc3b_clock_enable_usb(void);
+void uc3b_clock_disable_usb(void);
+uint32_t uc3b_clock_get_usb_hz(void);
 
 #ifdef __cplusplus
 }

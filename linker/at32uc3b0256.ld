@@ -36,6 +36,7 @@ SECTIONS
 
     __system_timer_vector_offset = __system_timer_vector - __exception_vectors;
     __uart_vector_offset = __uart_vector - __exception_vectors;
+    __usb_vector_offset = __usb_vector - __exception_vectors;
 
     .text ALIGN(4) :
     {
@@ -94,6 +95,9 @@ ASSERT(__uart_vector_offset == 0x108, "Unexpected UART vector offset")
 ASSERT((__exception_vectors | __uart_vector_offset) == __uart_vector,
        "UART autovector must obey EVBA OR offset")
 ASSERT((__stack_top__ & 7) == 0, "Stack must be 8-byte aligned")
+ASSERT(__usb_vector_offset == 0x10c, "Unexpected USB vector offset")
+ASSERT((__exception_vectors | __usb_vector_offset) == __usb_vector,
+       "USB autovector must obey EVBA OR offset")
 ASSERT(__bss_end__ <= __stack_bottom__, "SRAM data overlaps reserved stack")
 ASSERT(__flash_end__ <= ORIGIN(FLASH) + LENGTH(FLASH), "Flash overflow")
 ASSERT(SIZEOF(.unsupported_runtime) == 0, "Unsupported C++/TLS/PIC runtime")

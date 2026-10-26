@@ -25,6 +25,7 @@ void delayMicroseconds(unsigned int us);
 void setup(void);
 void loop(void);
 #include "HardwareSerial.h"
+#include "USBSerial.h"
 #endif
 
 #include "pins_arduino.h"

@@ -100,6 +100,12 @@ __uart_vector:
     rjmp uc3b_uart_isr
 .weak uc3b_uart_isr
 .set uc3b_uart_isr, __unhandled_interrupt
+    .org 0x10c
+.global __usb_vector
+__usb_vector:
+    rjmp uc3b_usb_isr
+.weak uc3b_usb_isr
+.set uc3b_usb_isr, __unhandled_interrupt
 __unhandled_interrupt:
     rjmp .
 .size __exception_vectors, . - __exception_vectors
