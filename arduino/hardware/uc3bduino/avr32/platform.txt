@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MIT
+name=UC3Bduino AVR32 (factory USB DFU)
+version=0.5.0
+
+# Installer writes an absolute bin path in platform.local.txt. Empty means PATH.
+compiler.path=
+compiler.c.cmd=avr32-gcc
+compiler.cpp.cmd=avr32-g++
+compiler.ar.cmd=avr32-ar
+compiler.objcopy.cmd=avr32-objcopy
+compiler.size.cmd=avr32-size
+compiler.c.cmd.windows=avr32-gcc.exe
+compiler.cpp.cmd.windows=avr32-g++.exe
+compiler.ar.cmd.windows=avr32-ar.exe
+compiler.objcopy.cmd.windows=avr32-objcopy.exe
+compiler.size.cmd.windows=avr32-size.exe
+
+# Same target, section, freestanding and diagnostic policy as the bare-metal build.
+compiler.target.flags=-mpart={build.mcu} -mno-relax
+compiler.common.flags={compiler.target.flags} -Os -g -ffreestanding -fno-builtin -fno-common -ffunction-sections -fdata-sections -muse-rodata-section -Wall -Wextra -Werror
+compiler.c.flags={compiler.common.flags} -std=c99 -fms-extensions
+compiler.cpp.flags={compiler.common.flags} -std=c++98 -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit
+compiler.S.flags={compiler.target.flags} -g -x assembler-with-cpp
+compiler.defines=-DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch}
+compiler.c.extra_flags=
+compiler.cpp.extra_flags=
+compiler.S.extra_flags=
+compiler.c.elf.extra_flags=
+compiler.libraries.ldflags=
+build.extra_flags=
+
+recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {compiler.defines} {compiler.c.extra_flags} {build.extra_flags} {includes} -MMD -MP -c "{source_file}" -o "{object_file}"
+recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {compiler.defines} {compiler.cpp.extra_flags} {build.extra_flags} {includes} -MMD -MP -c "{source_file}" -o "{object_file}"
+recipe.S.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.S.flags} {compiler.defines} {compiler.S.extra_flags} {build.extra_flags} {includes} -MMD -MP -c "{source_file}" -o "{object_file}"
+recipe.preproc.macros="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {compiler.defines} {compiler.cpp.extra_flags} {build.extra_flags} {includes} -E -CC -x c++ "{source_file}" -o "{preprocessed_file_path}"
+recipe.ar.pattern="{compiler.path}{compiler.ar.cmd}" rcs "{archive_file_path}" "{object_file}"
+
+# Force extraction of the shared reset object from core.a. It then references main.
+# Retain the shared linker's explicit rejection of unsupported C++ constructors.
+recipe.c.combine.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.target.flags} -nostdlib -nostartfiles -Wl,--gc-sections -Wl,--no-undefined -Wl,--undefined=_start "-Wl,-Map,{build.path}/{build.project_name}.map" "-T{runtime.platform.path}/system/at32uc3b0256.ld" {compiler.c.elf.extra_flags} -Wl,--start-group {object_files} "{archive_file_path}" {compiler.libraries.ldflags} -Wl,--end-group -o "{build.path}/{build.project_name}.elf"
+recipe.objcopy.hex.pattern="{compiler.path}{compiler.objcopy.cmd}" -O ihex "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.hex"
+recipe.objcopy.bin.pattern="{compiler.path}{compiler.objcopy.cmd}" -O binary "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.bin"
+recipe.size.pattern="{compiler.path}{compiler.size.cmd}" -A "{build.path}/{build.project_name}.elf"
+recipe.size.regex=^(?:\.reset|\.exception_vectors|\.text|\.rodata|\.data)\s+([0-9]+).*
+recipe.size.regex.data=^(?:\.data|\.bss|\.stack)\s+([0-9]+).*
+recipe.output.tmp_file={build.project_name}.hex
+recipe.output.save_file={build.project_name}.{build.variant}.hex
+
+# Windows development installation. The installer copies the canonical scripts
+# and records an optional local tool path. 'auto' uses environment/PATH.
+# No serial port or 1200-baud touch: enter factory DFU manually before Upload.
+tools.uc3bdfu.path=auto
+tools.uc3bdfu.legacy_device=Unconfirmed
+tools.uc3bdfu.upload.params.verbose=
+tools.uc3bdfu.upload.params.quiet=
+tools.uc3bdfu.upload.pattern=powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{runtime.platform.path}/tools/upload-dfu.ps1" -Firmware "{build.path}/{build.project_name}.hex" -ToolPath "{tools.uc3bdfu.path}" -LegacyDevice "{tools.uc3bdfu.legacy_device}"
