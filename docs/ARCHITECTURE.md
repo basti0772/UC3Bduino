@@ -1,6 +1,13 @@
 # Architecture direction
 
-**Stage 4 – HardwareSerial / UART**
+**Stage 5 – Arduino USB DFU upload**
+
+The single linker now reserves the factory bootloader's first 8 KiB of flash
+and the first SRAM word. `_start` is the application entry at `0x80002000`.
+The canonical PowerShell uploader is copied into the local Arduino package;
+manual, CLI and IDE uploads all use this implementation. It checks HEX addresses,
+USB identity and BOOTPROT before erase, then programs with readback and requests
+a reset-based application start. See [DFU_UPLOAD](DFU_UPLOAD.md).
 
 ```text
 Arduino API
@@ -38,7 +45,7 @@ All HAL functions compile, while section garbage collection removes unused ones.
 
 The startup and linker contracts remain intact. Two NOPs after masking GM apply
 the documented Rev B erratum. TC0 has an interrupt entry at 0x104 and UART at 0x108;
-linker assertions enforce EVBA-OR-offset addressing and retain the existing base.
+linker assertions enforce EVBA-OR-offset addressing after relocating the image.
 Clock setup is a reset-time operation with interrupts masked. GPIO alias writes
 are atomic per register, but callers serialize configuration/ownership changes.
 The pin-validity helper is hardware-independent and can be host-tested later;

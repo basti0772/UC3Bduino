@@ -2,7 +2,27 @@
 
 Arduino-compatible core for Atmel AVR32 UC3B microcontrollers.
 
-**Stage 4 – HardwareSerial / UART**
+**Stage 5 – Arduino USB DFU upload**
+
+Arduino Upload now invokes a checked `dfu-programmer 1.1.0` workflow for the
+factory UC3B bootloader. Both build paths start the application at `0x80002000`
+and reserve the first 8 KiB of flash. **DO NOT overwrite the factory USB DFU
+bootloader.** Physical upload/Blink execution still need board validation.
+
+## First test
+
+1. Extract dfu-programmer 1.1.0 and set `UC3B_DFU_TOOL_PATH`.
+2. Install UC3Bduino into the actual IDE sketchbook, explicitly mapping D0 from
+   the board schematic. Check the MCU marking before confirming a legacy target.
+3. Select **UC3Bduino AT32UC3B0256** and open `examples/Blink/Blink.ino`.
+4. Click **Verify**, enter factory DFU mode, then click **Upload**.
+5. After automatic application start, observe the chosen D0/LED.
+
+See [DFU setup, reset/pin sequence and troubleshooting](docs/DFU_UPLOAD.md)
+and [local IDE installation](docs/ARDUINO_IDE.md) for exact commands. A DFU device
+does not need a COM port. The factory bootloader requires supported OSC0 hardware.
+
+## Core status
 
 Arduino CLI now recognizes **UC3Bduino AT32UC3B0256** and builds the supplied
 `.ino` sketches to ELF/HEX/BIN/map files. The minimal C++98 core implements
@@ -11,7 +31,7 @@ existing clock/GPIO HAL. TC0 now supplies `millis()`, `micros()`, `delay()` and
 `delayMicroseconds()`; see [timing and limits](docs/TIMING.md). One `Serial`
 object now provides polling TX, interrupt RX and decimal `print/println`,
 including `Serial.println(millis())`. See [Serial setup](docs/SERIAL.md) for
-explicit pin/clock selection. This is a limited Arduino API subset. All eight
+explicit pin/clock selection. This is a limited Arduino API subset. All nine
 examples compile; IDE GUI and hardware execution remain untested.
 
 Both build paths use the same reset code, memory layout and C HAL for
@@ -31,6 +51,8 @@ system, C library or Atmel Software Framework (ASF) is linked.
 - For bare-metal builds: GNU Make 3.81 or newer (`make.exe` or `mingw32-make.exe`). The tested historical
   toolchain already includes Make 3.81.
 - Optional: Python 3.8+ for artifact validation; it is not needed to build.
+- For upload: dfu-programmer 1.1.0 x64 and a usable WinUSB driver for 03EB:2FF6;
+  see [DFU_UPLOAD](docs/DFU_UPLOAD.md). No Python is needed for upload.
 
 Obtain the toolchain separately from the
 [Microchip archive](https://www.microchip.com/en-us/tools-resources/archives/avr-sam-mcus).
@@ -61,8 +83,9 @@ python tests/verify_firmware.py build/arduino/minimal --basename ArduinoMinimal.
 
 See [ARDUINO_IDE](docs/ARDUINO_IDE.md) for isolated CLI configuration, exact
 installation layout and the `DigitalOutput` example. Its logical `D0` slot needs
-an explicit GPIO mapping; no LED or full board pinout is assumed. Upload is not
-implemented. The [test matrix](docs/TESTING.md) separates executed builds from
+an explicit GPIO mapping; no LED or full board pinout is assumed. The
+[DFU uploader](docs/DFU_UPLOAD.md) uses the same installed scripts for CLI/IDE.
+The [test matrix](docs/TESTING.md) separates executed builds from
 the documented IDE procedure and pending hardware tests.
 
 For Serial, select a route and actual oscillator using the installer options
@@ -98,7 +121,7 @@ Generated files in `build/at32uc3b0256/minimal/`:
 | --- | --- |
 | `firmware.elf` | AVR32 executable with debug symbols |
 | `firmware.hex` | Intel HEX with flash load addresses |
-| `firmware.bin` | Raw flash image starting at `0x80000000` |
+| `firmware.bin` | Raw application image starting at `0x80002000`; upload uses HEX |
 | `firmware.map` | Linker memory layout and symbols |
 
 The build prints `avr32-size`. Its BSS total includes the 1 KiB stack reservation;
@@ -143,7 +166,7 @@ linker/at32uc3b0256.ld        device memory layout and stack reservation
 tools/targets/               device compiler selection
 arduino/hardware/            local Arduino platform, core and variant template
 scripts/                    Windows build, clean and Arduino installation
-examples/                   three bare-metal and eight Arduino examples
+examples/                   three bare-metal and nine Arduino examples
 tests/                      artifact inspection and native timing/serial logic tests
 docs/                       hardware sources, design, roadmap, validation
 ```
@@ -156,7 +179,8 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
 - **CLI builds verified; IDE GUI, hardware execution and flashing untested.** See
   [TESTING](docs/TESTING.md), the earlier [validation record](docs/VALIDATION.md)
   and [hardware assumptions](docs/HARDWARE.md).
-- Full-flash reset image; no bootloader reservation or upload support.
+- DFU upload assumes the intact factory bootloader and BOOTPROT=3. Legacy
+  signatures need explicit physical MCU confirmation; unknown devices abort.
 - Internal RC remains the default; optional OSC0 accepts an explicit 0.4..16 MHz
   crystal or external clock. Board crystal, pin wiring and watchdog/fuses are
   unknown. No PLL, complete board pin mapping, general INTC
@@ -172,8 +196,8 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
 - Serial supports one selected USART, 8N1, polling TX and 63 usable RX bytes
   by default. Pin/clock configuration is required; RX service latency is unmeasured.
   Print supports decimal integers/text, with no full Stream/virtual Print ABI.
-- No SPI, Wire, ADC, PWM, USB, external-interrupt API or Boards Manager
-  distribution. The next stage is ADC / analogRead().
+- No SPI, Wire, ADC, PWM, sketch USB/CDC, external-interrupt API or Boards Manager
+  distribution. The next stage is USB CDC / SerialUSB, followed by packaging.
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and
 [THIRD_PARTY](docs/THIRD_PARTY.md). Original project files use the [MIT license](LICENSE).

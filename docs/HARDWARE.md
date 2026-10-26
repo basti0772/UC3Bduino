@@ -13,6 +13,8 @@ Primary references (consulted 2026-10-24):
 | Flash | `0x80000000`, 256 KiB (`0x40000`) |
 | SRAM | `0x00000000`, 32 KiB (`0x8000`) |
 | Reset fetch | `0x80000000` |
+| Stage 5 application entry | `0x80002000`, after the 8 KiB factory bootloader |
+| Stage 5 application SRAM | Starts at `0x00000004`; preserve bootloader RAM key |
 | CPU architecture | AVR32 UC, revision 1 / AVR32A |
 | EVBA system register address | `4` (system register, not a memory-mapped peripheral) |
 | Global interrupt mask | SR bit 16 |
@@ -42,7 +44,8 @@ the timer and vector are configured. See [TIMING](TIMING.md).
 Stage 4 adds a USART INT1 branch at 0x108, configured by Serial.begin after the
 timer is running. Its route, register and electrical checks are in [SERIAL](SERIAL.md).
 Stage 2 adds two NOPs after `ssrf GM` for the Rev B erratum in section 31.2.4.
-The rest of the reset runtime and memory layout are retained.
+The reset runtime is retained; Stage 5 relocates the application and reserves
+the bootloader areas as documented in [DFU_UPLOAD](DFU_UPLOAD.md).
 
 Clock and GPIO facts, reset values, register offsets and special pad ownership
 are documented in [CLOCK](CLOCK.md) and [GPIO](GPIO.md), cross-checked against
@@ -55,7 +58,8 @@ or vendor implementation sources are copied into the HAL.
   The `uc3b0256es` engineering-sample target is not selected.
 - Verify reset-to-main execution, SP, copy/zero loops and trap behavior with JTAG.
 - Check existing bootloader, flash protection and watchdog fuse configuration.
-  This image begins at the first flash byte; no resident bootloader is reserved.
+  The application reserves the factory bootloader; the uploader checks BOOTPROT
+  and refuses unknown identities or unsafe images. Do not use JTAG chip erase.
 - Reset uses internal RC. The clock HAL defaults to undivided RCSYS, or enables
   explicitly configured OSC0 before peripheral startup. It does not service a watchdog or promise
   timing accuracy. Board oscillator population remains unknown.

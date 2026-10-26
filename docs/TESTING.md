@@ -1,6 +1,66 @@
 # Test record
 
-## Stage 4 – HardwareSerial / UART
+## Stage 5 – Arduino USB DFU upload
+
+Executed **2026-10-26** on Windows with PowerShell 5.1, AVR32 GCC/G++ 4.3.2,
+binutils 2.19.20081016, Arduino CLI 1.5.2-rc.1 and official dfu-programmer 1.1.0
+x64. No physical DFU board was present. The 12 MHz OSC0/U0C/PA03 configuration
+is a compilation fixture, not a claim about the user's board.
+
+| Check | Status | Actual evidence / limits |
+| --- | --- | --- |
+| Factory layout/protocol research | PASS | Official AVR32784, AVR32806, AVR32760 and 32059L; pinned tool source inspection, links in DFU_UPLOAD.md |
+| Nine Arduino sketches | PASS | ArduinoMinimal, DigitalOutput, Blink, MillisTest, MicrosPulse, SerialHello, SerialMillis, SerialEcho, GpioSmoke compile/link with warnings as errors |
+| Default RC regression | PASS | Fresh install without OSC0/Serial route; ArduinoMinimal and Blink compile |
+| Three bare-metal builds | PASS | minimal, gpio-toggle, startup-check rebuilt with the same linker |
+| ELF/HEX/BIN memory checks | PASS | Entry 0x80002000; no bootloader/user-page load bytes; SRAM word zero reserved; HEX/BIN match ELF; stack top remains 0x8000 |
+| Initialized-data fixture | PASS | startup-check data VMA 0x00000004, 8-byte flash initializer checked |
+| Upload HEX preflight | PASS | All new Arduino/bare-metal HEX accepted offline; old Stage 4 Blink at 0x80000000 rejected |
+| DFU host tests | PASS | 42 checks: malformed/checksum/overlap/out-of-range/entry records, ambiguous devices, identity/version/protection gates, legacy confirmation, device change, fail-fast sequencing |
+| Native process boundary | PASS | Synthetic EXE tests argv quoting, stdout/stderr, exits, firmware read lock and erase/flash/launch order; no USB hardware |
+| dfu-programmer executable | PASS | Real --version/--help; at32uc3b0256 get product-name returns exit 3, no device present |
+| DFU device detection: absent device | PASS | No present 03EB:2FF6 device; wrapper reports DFU device not found before erase |
+| DFU device detection: physical identity | NOT TESTED | No positive signature, BOOTPROT or bus/address result from hardware |
+| Manual Blink upload | NOT TESTED | Production command prepared; no physical write |
+| Flash verify | NOT TESTED | Real command enables default readback; failure propagation host-tested; no physical readback |
+| Application start | NOT TESTED | launch/reset sequence prepared; no observed hardware execution |
+| Arduino CLI upload recipe/errors | PASS | CLI without --port reaches installed script; missing tool/device each return exit 1 and clear errors |
+| Arduino CLI upload on hardware | NOT TESTED | No device to complete programming |
+| Arduino IDE board display / Verify / Upload button / recipe / errors | NOT AVAILABLE | No installed IDE 2.x found in app/start-menu checks, usual install paths or running processes |
+| Arduino IDE upload on hardware | NOT TESTED | Requires IDE 2.x and a board |
+| Blink / GpioSmoke hardware | NOT TESTED | D0 wiring, polarity, waveform and execution remain unmeasured |
+| Windows driver binding | NOT TESTED | WinUSB documented from upstream; no driver changed |
+| Installer and paths | PASS | Explicit and auto tool paths, spaces, environment lookup, legacy setting, invalid tool rejection, existing-target refusal, WhatIf |
+| Shared source manifest | PASS | 21 installed files match canonical source and SHA-256 manifest |
+
+Host tests execute the production functions with synthetic Windows device
+enumeration and a native test executable. This validates control flow, not the
+Atmel USB protocol or electrical behavior. Reproduce with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/test_dfu_upload.ps1
+python tests/verify_firmware.py build/arduino/Blink --basename Blink.ino
+.\scripts\test-upload.ps1 -BuildPath build/arduino/Blink -CheckOnly
+```
+
+The host script compiles a temporary C# console fixture using the Windows .NET
+Framework compiler and removes its own temporary directory afterward.
+Representative 12 MHz sizes: Blink **1832 text / 0 data / 1036 bss**, BIN span
+**2256** bytes; GpioSmoke **1828 / 0 / 1036**, BIN **2252**; SerialMillis
+**2588 / 0 / 1120**, BIN **3012**. All eight pre-existing Arduino sizes and
+three bare-metal sizes remain unchanged; flash addresses moved by 0x2000 and
+static SRAM by 4 bytes. BSS includes the reserved 1 KiB stack.
+
+Hardware acceptance must record MCU/board marking, bootloader/signature/BOOTPROT,
+OSC0 and D0 wiring, WinUSB version, manual/CLI/IDE logs, physical readback,
+post-launch USB disappearance and measured Blink/GpioSmoke waveform. Follow
+[DFU_UPLOAD](DFU_UPLOAD.md); preserve the factory bootloader. Pending checks
+only become PASS after actual execution.
+
+## Historical Stage 4 – HardwareSerial / UART
+
+The following records describe the earlier full-flash builds. Their addresses
+and lack of upload support are historical; Stage 5 supersedes that layout.
 
 Executed 2026-10-25 with AVR32 GCC/G++ 4.3.2, binutils 2.19.20081016,
 Arduino CLI 1.5.2-rc.1, Windows PowerShell 5.1 and native MSVC 14.51.36231.

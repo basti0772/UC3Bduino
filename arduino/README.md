@@ -8,5 +8,6 @@ linker sources into the installed package. There is no second maintained copy
 of those components in Git.
 
 See [local installation and compilation](../docs/ARDUINO_IDE.md) and the
-[actual test matrix](../docs/TESTING.md). No upload tool or board-manager
-distribution is supplied.
+[actual test matrix](../docs/TESTING.md). The installer includes the canonical
+[DFU upload scripts](../docs/DFU_UPLOAD.md); obtain dfu-programmer separately.
+No Boards Manager distribution is supplied yet.

@@ -1,4 +1,4 @@
-# Local Arduino installation (Stage 4 – HardwareSerial / UART)
+# Local Arduino installation (Stage 5 – USB DFU upload)
 
 The local package exposes **UC3Bduino AT32UC3B0256**, with FQBN
 `uc3bduino:avr32:uc3b0256`. It provides a small C++98 core, `setup()`/`loop()`,
@@ -6,7 +6,7 @@ The local package exposes **UC3Bduino AT32UC3B0256**, with FQBN
 the existing C HAL. Stage 3 adds hardware-backed time APIs and Blink/MillisTest/
 MicrosPulse; see [TIMING](TIMING.md). Stage 4 adds HardwareSerial/Print and three
 Serial sketches; configure their pins and clock as described in [SERIAL](SERIAL.md).
-Upload and hardware execution are not tested or integrated.
+Stage 5 integrates the factory DFU uploader. Hardware execution remains untested.
 See [TESTING](TESTING.md) for the distinction between CLI and GUI results.
 
 ## Install locally on Windows
@@ -27,6 +27,25 @@ $env:AVR32_TOOLCHAIN_PATH = 'D:\Tools\avr32-toolchain' # replace with your insta
 .\scripts\install-arduino-hardware.ps1 -SketchbookPath 'D:\ArduinoSketchbook'
 ```
 
+If omitted, `-SketchbookPath` defaults to the Windows Documents known folder
+plus `Arduino`. This does not read custom IDE Preferences; override it if needed.
+For Blink and Upload, after checking the physical MCU marking and board wiring:
+
+```powershell
+$env:UC3B_DFU_TOOL_PATH = 'D:\Tools\dfu-programmer-1.1.0'
+# Example pin only: replace PA03 with a board-verified free output.
+.\scripts\install-arduino-hardware.ps1 -SketchbookPath 'D:\ArduinoSketchbook' -GpioPort A -GpioPin 3 -LegacyDevice AT32UC3B0256
+```
+
+Use a fresh destination for each installation. `-DfuToolPath` overrides the
+environment and records the executable path in `platform.local.txt`; directory
+or EXE is accepted. Omitting it still permits compilation; Upload then resolves
+the environment/PATH of the running IDE. The installer never downloads tools or
+changes drivers. Read [DFU_UPLOAD](DFU_UPLOAD.md) before connecting the target.
+`-LegacyDevice AT32UC3B0256` is explicit confirmation of the physical marking,
+needed because old bootloaders report only the UC3B family. Leave it unconfirmed
+when preparing software without the board.
+
 `-ToolchainPath` overrides the environment variable; root or bin paths work.
 When neither is supplied, the installer finds `avr32-gcc.exe` on PATH and checks
 the companion tools. It writes the chosen absolute bin path, with quoted recipe
@@ -42,6 +61,7 @@ Installation creates `<Sketchbook>/hardware/uc3bduino/avr32/`, containing:
   under `startup/`, plus the existing linker script under `system/`.
 - The `uc3b0256` variant, project license and external header notices.
 - `shared-sources.json`, recording original paths and SHA-256 hashes.
+- Exact copies of the canonical uploader/helper in `tools/`, plus DFU instructions.
 
 These are installation snapshots, not a second source of truth. Change shared
 code in the repository and reinstall for a new version. The installer refuses
@@ -55,20 +75,24 @@ restricted, use the README's one-process PowerShell execution-policy override.
 
 1. Install into the sketchbook actually selected in Preferences, then restart IDE.
 2. Open `examples/ArduinoMinimal/ArduinoMinimal.ino` from this checkout.
-3. Select **Tools > Board > UC3Bduino AVR32 (compilation smoke test) >
+3. Select **Tools > Board > UC3Bduino AVR32 (factory USB DFU) >
    UC3Bduino AT32UC3B0256**. Alternatively use the board selector's other-board
    dialog. A port is not needed for compilation.
 4. Click **Verify**. Expected artifacts are `<SketchName>.ino.elf`, `.hex`, `.bin`
    and `.map` in Arduino's build directory; enable verbose compilation output to
    locate it. CLI can supply an explicit build path as below.
-5. With verified serial/clock options installed, open SerialHello, SerialMillis
-   or SerialEcho and Verify. Arduino.h exposes Serial automatically. These three
-   examples were compiled by CLI; the IDE GUI procedure remains NOT TESTED.
+5. Open `examples/Blink/Blink.ino` with the explicit D0 mapping installed and Verify.
+6. Enter the factory bootloader using the board's reset/ISP wiring described in
+   [DFU_UPLOAD](DFU_UPLOAD.md). Connect only one UC3B DFU device.
+7. Click **Upload**. The recipe checks image, identity and protection, erases the
+   application, programs and reads it back, then requests reset/start.
+8. Observe D0. No serial port appears afterward in Stage 5; CDC follows later.
 
 This is the documented IDE workflow, not a claim of a GUI test. The CLI uses
-the same package recipes. There is no upload recipe, fake programmer, port
-auto-detection for this board, debugger integration or Boards Manager index.
-Do not use Upload as the acceptance test for this stage.
+the same package recipes. The tool discovers the DFU USB address; do not select
+an unrelated COM port. Choose normal Upload, not Upload Using Programmer or
+Burn Bootloader. There is no debugger integration or Boards Manager index.
+IDE 2.x was not installed on the validation host; its GUI checks are NOT AVAILABLE.
 
 ## Arduino CLI
 
@@ -86,6 +110,14 @@ Save it as `arduino-local.yaml` outside tracked source, then run from the repo:
 arduino-cli board listall UC3Bduino --config-file arduino-local.yaml
 arduino-cli compile --config-file arduino-local.yaml --fqbn uc3bduino:avr32:uc3b0256 --build-path build/arduino/minimal examples/ArduinoMinimal
 python tests/verify_firmware.py build/arduino/minimal --basename ArduinoMinimal.ino
+```
+
+After installing D0 and the DFU tool, compile and upload Blink with the same
+configuration (enter DFU before the second command):
+
+```powershell
+arduino-cli compile --config-file arduino-local.yaml --fqbn uc3bduino:avr32:uc3b0256 --build-path build/arduino/Blink examples/Blink
+arduino-cli upload --config-file arduino-local.yaml --fqbn uc3bduino:avr32:uc3b0256 --input-dir build/arduino/Blink --verbose examples/Blink
 ```
 
 If CLI's `directories.user` already points to the chosen sketchbook, omit
@@ -145,11 +177,11 @@ explicitly. These are limited smoke-test semantics, not full Arduino parity.
 `F_CPU` and the HAL getters report nominal 115200 Hz by default, or the explicitly
 configured OSC0 frequency. Arduino init enables the TC0 timer interrupt; long
 interrupt masking loses time and may overrun Serial RX. Serial supports the
-subset documented in SERIAL.md; ADC/PWM, buses and USB remain unimplemented.
+subset documented in SERIAL.md; ADC/PWM, buses and application USB remain unimplemented.
 Timing limits are documented in TIMING.md. Size reporting includes the reserved 1 KiB stack in SRAM usage;
 program section totals omit alignment gaps, so use the BIN span/map and linker
-checks for flash occupancy. Full-flash layout requires separate bootloader/fuse
-and board verification before any external programming.
+checks for flash occupancy. The shared Stage 5 linker reserves the bootloader's
+8 KiB and first SRAM word. Only application HEX is passed to the checked uploader.
 
 ## Primary references
 

@@ -1,6 +1,6 @@
 # Validation record
 
-For the current **Stage 4 – HardwareSerial / UART**, see
+For the current **Stage 5 – Arduino USB DFU upload**, see
 [TESTING](TESTING.md): actual CLI builds, installer checks, regression builds
 and the explicit distinction between CLI, IDE GUI and hardware results.
 The records below describe earlier stages.

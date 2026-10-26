@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current: Stage 4 – HardwareSerial / UART**
+**Current: Stage 5 – Arduino USB DFU upload**
 
 Each stage should have its own review and validation. A checked build is not a
 claim of working peripherals or Arduino compatibility.
@@ -23,14 +23,17 @@ claim of working peripherals or Arduino compatibility.
    selectable MCU routes, polling TX, INT1 RX ring, decimal Print and explicit
    OSC0 option. All eight Arduino sketches compile. Real board pin/clock selection
    and physical UART tests are pending; see [SERIAL](SERIAL.md).
-5. **ADC / analogRead** — next: ADC channels, reference and conversion behavior.
-6. **SPI** — synchronous serial bus API.
-7. **Wire / I2C** — two-wire bus API.
-8. **PWM / analogWrite** — timer allocation, output routing and PWM behavior.
-9. **External interrupts** — explicit pin mapping and interrupt API.
-10. **Upload / flashing** — supported probes/loaders and safe memory layout rules.
-11. **Compatibility tests** — Arduino API behavior and on-device regression tests.
-12. **Boards Manager release** — versioned distributions, checksums and installation.
+5. **Arduino USB DFU upload** — factory bootloader reservation, checked
+   dfu-programmer workflow, shared manual/CLI/IDE recipe and Blink procedure.
+   Local build/host checks are recorded separately from pending board tests in
+   [TESTING](TESTING.md); see [DFU_UPLOAD](DFU_UPLOAD.md).
+6. **USB CDC / SerialUSB** — next: validated 48 MHz USB clock/PLL, USB device
+   initialization and enumeration, CDC ACM virtual COM port, SerialUSB API.
+7. **Packaging / easy installation** — versioned tools/core distributions,
+   checksums, simple setup and Boards Manager installation.
+
+Later: ADC / analogRead, SPI, Wire / I2C, PWM / analogWrite, external interrupts,
+EEPROM, additional UARTs, wider Arduino compatibility and hardware regression tests.
 
 Board variants and package expansion accompany these stages as verified wiring
 and toolchain support become available.
