@@ -97,6 +97,9 @@ try {
 
     $template = Join-Path $repoRoot 'arduino/hardware/uc3bduino/avr32'
     $shared = @(
+        @{ Source = 'src/hal/uc3b_adc.c'; Target = 'cores/uc3bduino/hal/uc3b_adc.c' },
+        @{ Source = 'src/hal/uc3b_adc.h'; Target = 'cores/uc3bduino/hal/uc3b_adc.h' },
+        @{ Source = 'src/hal/uc3b_adc_hw.h'; Target = 'cores/uc3bduino/hal/uc3b_adc_hw.h' },
         @{ Source = 'src/hal/uc3b_clock.c'; Target = 'cores/uc3bduino/hal/uc3b_clock.c' },
         @{ Source = 'src/hal/uc3b_clock.h'; Target = 'cores/uc3bduino/hal/uc3b_clock.h' },
         @{ Source = 'src/hal/uc3b_gpio.c'; Target = 'cores/uc3bduino/hal/uc3b_gpio.c' },

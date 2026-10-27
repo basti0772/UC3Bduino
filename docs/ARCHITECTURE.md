@@ -1,6 +1,6 @@
 # Architecture direction
 
-**Stage 6 – USB CDC / SerialUSB**
+**Stage 8 – ADC / analogRead**
 
 The single linker now reserves the factory bootloader's first 8 KiB of flash
 and the first SRAM word. `_start` is the application entry at `0x80002000`.
@@ -77,8 +77,9 @@ CLI archive/link and artifact checks.
 
 `wiring_digital.cpp` checks the logical index before accessing `uc3b_pin_map`,
 validates the mapped HAL pin, and delegates every GPIO operation to the C HAL.
-The variant offers one logical slot, D0, initially invalid. Installation can map
-it explicitly to a board-verified pad. No LED or full pinout is invented. Invalid
+The variant retains configurable D0 (initially invalid) and adds eight verified
+A-pins. ADC metadata derives from the same physical pad mapping, including D0
+aliases. No LED or board connector pinout is invented. Invalid
 pins have no GPIO effect and read LOW; unsupported modes have no effect. INPUT,
 OUTPUT (initial LOW) and INPUT_PULLUP are supported. Writing HIGH to an input
 does not enable its pull-up; use INPUT_PULLUP. These limited semantics are
@@ -138,3 +139,15 @@ heap, constructor, UART bridge or bootloader transition command is added.
 VID/PID defaults to unconfigured, so no application USB attachment occurs until
 the developer supplies authorized IDs. Details and hardware limits are in
 [USB_CDC](USB_CDC.md).
+
+## ADC
+
+`wiring_analog.cpp` validates the Arduino pin, selects the ADC mux with the GPIO
+HAL, and calls `uc3b_adc_read_channel`. The HAL lazily enables only its PBA mask
+bit, derives a <=2.5 MHz clock, waits for startup and triggers one 10-bit
+conversion on one channel. CPU COUNT and finite polling bound waits without
+reserving a timer or ADC interrupt. Timeout resets before changing channels;
+the next read retries initialization. No heap, floating point, sleep, DMA or
+background sampling is added. Native tests substitute only the hardware adapter
+and execute the actual state machine/API; real conversion behavior and accuracy
+await hardware testing. See [ADC](ADC.md) for the reference and electrical limits.

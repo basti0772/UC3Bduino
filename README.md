@@ -1,6 +1,6 @@
 # UC3Bduino
 
-**0.7.0-dev — Experimental / Development.** Arduino-compatible core for
+**Stage 8 – ADC / analogRead · 0.8.0-dev — Experimental / Development.** Arduino-compatible core for
 **AT32UC3B0256**. Stable FQBN: **`uc3bduino:avr32:uc3b0256`**.
 Firmware builds and host tests pass; physical DFU upload, USB CDC enumeration
 and Arduino IDE GUI operation remain unverified. Preserve the factory DFU bootloader.
@@ -40,7 +40,31 @@ See [packaging/version policy](docs/PACKAGING.md), [changelog](CHANGELOG.md),
 | HardwareSerial / Print | Implemented; explicit UART/clock, build/host checks |
 | Factory DFU upload | Implemented wrapper; mock transport tested, physical upload pending |
 | USB CDC / SerialUSB | Implemented; build/protocol host tests, hardware enumeration pending |
-| ADC, SPI, I2C/Wire, PWM | Not implemented |
+| analogRead(A0..A7) | Implemented; native 10 bits, build/host checks; hardware pending |
+| analogReference / analogReadResolution | Not supported; external ADVREF, fixed 10-bit API |
+| SPI, I2C/Wire, PWM | Not implemented |
+
+## ADC Quick Start
+
+Verify the board schematic and external ADVREF first. A0 is PA03 (64-pin
+package pin 9); valid input is 0..ADVREF. Never connect a 5 V signal.
+Open **UC3BduinoExamples > AnalogRead**, or use:
+
+```cpp
+void setup() { SerialUSB.begin(); }
+void loop() {
+    int value = analogRead(A0); // 0..1023; -1 means failure
+    SerialUSB.println(value);
+    delay(100);
+}
+```
+
+SerialUSB needs the clock/VID/PID setup above and is not hardware-tested yet.
+Both ADC examples support HardwareSerial: set `ADC_USE_USB` to `0`, configure
+the [UART route and oscillator](docs/SERIAL.md), and use 115200 baud.
+See [ADC reference, pin mapping, timing and potentiometer test](docs/ADC.md).
+A0..A7 map to PA03..PA08/PA30/PA31. If D0 is configured on PA03, it aliases A0;
+do not drive that pad as a Blink output while measuring an analog signal.
 
 ## Core status
 
@@ -53,7 +77,8 @@ object now provides polling TX, interrupt RX and decimal `print/println`,
 including `Serial.println(millis())`. See [Serial setup](docs/SERIAL.md) for
 explicit pin/clock selection. `SerialUSB` reuses the same Print implementation;
 see [CDC API, configuration and limits](docs/USB_CDC.md). This is a limited Arduino
-API subset. All twelve Arduino examples compile; IDE GUI and hardware execution
+API subset. `analogRead()` maps A0–A7 through the shared variant and ADC HAL.
+All fourteen Arduino examples compile; IDE GUI and hardware execution
 remain untested.
 
 Both build paths use the same reset code, memory layout and C HAL for
@@ -183,14 +208,14 @@ and [clock configuration](docs/CLOCK.md). CPU, HSB, PBA and PBB are nominally
 ```text
 src/main.c                   minimal program
 src/startup/uc3_startup.S     original UC startup and exception traps
-src/hal/                    clock, GPIO, timer and UART using installed headers
+src/hal/                    clock, GPIO, timer, UART and ADC using installed headers
 src/usb/                    USBB driver, EP0 device core, CDC and central config
 linker/at32uc3b0256.ld        device memory layout and stack reservation
 tools/targets/               device compiler selection
 arduino/hardware/            local Arduino platform, core and variant template
 scripts/                    Windows build, clean and Arduino installation
-examples/                   three bare-metal and twelve Arduino examples
-tests/                      artifact inspection and native timing/serial/USB tests
+examples/                   three bare-metal and fourteen Arduino examples
+tests/                      artifact inspection and native timing/serial/USB/ADC tests
 docs/                       hardware sources, design, roadmap, validation
 ```
 
@@ -222,7 +247,9 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
 - USB is a single CDC function with bounded buffering and no automatic DFU reset.
   Physical enumeration, throughput, interrupt latency and suspend current need
   board validation. USB VID/PID must be configured by the developer.
-- No SPI, Wire, ADC, PWM, external-interrupt API or Boards Manager distribution.
+- ADC uses external ADVREF, sequential blocking conversions and foreground ownership.
+  Physical accuracy and channel settling remain untested; failures return -1.
+- No SPI, Wire, PWM, external-interrupt API or Boards Manager distribution.
   Stage 7 supplies the local installer and development source archive.
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and

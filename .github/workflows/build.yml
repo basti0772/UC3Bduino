@@ -20,7 +20,7 @@ jobs:
             [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
             if ($errors.Count) { throw ($errors | Out-String) }
           }
-      - name: Host protocol, ring buffer, Print and timing tests
+      - name: Host protocol, ring buffer, Print, timing and ADC tests
         shell: powershell
         run: |
           $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"

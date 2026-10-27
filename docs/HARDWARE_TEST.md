@@ -28,9 +28,15 @@ mark host/mock tests as physical passes. See [INSTALL_WINDOWS](INSTALL_WINDOWS.m
 - [ ] Suspend/resume works; measure USB suspend current before any compliance claim.
 - [ ] Regression: SerialHello/SerialMillis with a safe 3.3 V UART adapter,
   GPIO read/write and timing continue to work alongside SerialUSB.
+- [ ] ADC: verify ADVREF/VDDANA/GNDANA and input limits, then record ground,
+  mid-scale and reference readings with AnalogRead. Alternate A0/A1 low/high
+  levels with AnalogMultiChannel, then swap levels. Check first reads, settling,
+  noise and errors using both USB and UART output as described in [ADC](ADC.md).
+  D0 must not drive the measured pad; PA03-configured D0 aliases A0.
 - [ ] Validate the installed examples and normal Upload in Arduino IDE 2.x,
   recording IDE version, then repeat from a clean installation of the source ZIP.
 
 Do not publish a stable release until the relevant checks pass and unresolved
 failures are documented. Even a development release needs review of the physical
-upload/launch/CDC path; Stage 7 only prepares an unpublished `0.7.0-dev` archive.
+upload/launch/CDC path. The current `0.8.0-dev` source archive is unpublished;
+ADC electrical/accuracy tests also remain pending.

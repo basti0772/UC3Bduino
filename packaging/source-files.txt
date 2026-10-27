@@ -17,6 +17,7 @@ arduino/hardware/uc3bduino/avr32/cores/uc3bduino/UC3BduinoVersion.h
 arduino/hardware/uc3bduino/avr32/cores/uc3bduino/USBSerial.cpp
 arduino/hardware/uc3bduino/avr32/cores/uc3bduino/USBSerial.h
 arduino/hardware/uc3bduino/avr32/cores/uc3bduino/main.cpp
+arduino/hardware/uc3bduino/avr32/cores/uc3bduino/wiring_analog.cpp
 arduino/hardware/uc3bduino/avr32/cores/uc3bduino/wiring_digital.cpp
 arduino/hardware/uc3bduino/avr32/cores/uc3bduino/wiring_time.cpp
 arduino/hardware/uc3bduino/avr32/libraries/UC3BduinoExamples/library.properties
@@ -26,6 +27,7 @@ arduino/hardware/uc3bduino/avr32/variants/uc3b0256/pins_arduino.h
 arduino/hardware/uc3bduino/avr32/variants/uc3b0256/serial_config.h
 arduino/hardware/uc3bduino/avr32/variants/uc3b0256/test_pin_config.h
 arduino/hardware/uc3bduino/avr32/variants/uc3b0256/variant.cpp
+docs/ADC.md
 docs/ARCHITECTURE.md
 docs/ARDUINO_IDE.md
 docs/CLOCK.md
@@ -46,6 +48,8 @@ docs/TOOLCHAIN.md
 docs/TROUBLESHOOTING.md
 docs/USB_CDC.md
 docs/VALIDATION.md
+examples/AnalogMultiChannel/AnalogMultiChannel.ino
+examples/AnalogRead/AnalogRead.ino
 examples/ArduinoMinimal/ArduinoMinimal.ino
 examples/Blink/Blink.ino
 examples/Blink/README.md
@@ -78,6 +82,9 @@ scripts/package-release.ps1
 scripts/smoke-test.ps1
 scripts/test-upload.ps1
 scripts/upload-dfu.ps1
+src/hal/uc3b_adc.c
+src/hal/uc3b_adc.h
+src/hal/uc3b_adc_hw.h
 src/hal/uc3b_clock.c
 src/hal/uc3b_clock.h
 src/hal/uc3b_device.h
@@ -99,6 +106,8 @@ src/usb/usb_cdc.h
 src/usb/usb_config.h
 src/usb/usb_device_core.c
 src/usb/usb_device_core.h
+tests/adc_test.c
+tests/analog_api_test.cpp
 tests/check_package.py
 tests/run-host-tests.cmd
 tests/run-usb-host-tests.cmd

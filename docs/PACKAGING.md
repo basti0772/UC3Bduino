@@ -11,7 +11,7 @@ cores/uc3bduino/          Arduino API + copied HAL/USB/startup
 variants/uc3b0256/        explicit D0/UART selections
 system/at32uc3b0256.ld    shared protected memory layout
 tools/                   PowerShell DFU wrapper (no native binaries)
-libraries/UC3BduinoExamples/examples/   all twelve canonical sketches
+libraries/UC3BduinoExamples/examples/   all fourteen canonical sketches
 docs/, LICENSE, CHANGELOG.md, shared-sources.json
 ```
 
@@ -52,8 +52,8 @@ python tests/check_package.py
 .\scripts\package-release.ps1
 ```
 
-Output: `dist/0.7.0-dev/UC3Bduino-0.7.0-dev.zip`, `INSTALL_WINDOWS.md` and
-`SHA256SUMS.txt`. The ZIP contains one `UC3Bduino-0.7.0-dev/` source root, all
+Output: `dist/0.8.0-dev/UC3Bduino-0.8.0-dev.zip`, `INSTALL_WINDOWS.md` and
+`SHA256SUMS.txt`. The ZIP contains one `UC3Bduino-0.8.0-dev/` source root, all
 installation documentation and an internal `SOURCE_SHA256SUMS.txt`. It works
 without Git after extraction. `packaging/source-files.txt` is the reviewed source
 allowlist; update it when adding files. The script reads current listed source
@@ -81,7 +81,7 @@ Each platform/tool needs real URL, archive name, exact size, SHA-256 and version
 Replace local absolute tool paths with actual installed tool dependency properties.
 Validate the index and a clean Boards Manager install before advertising its URL.
 
-`VERSION` and [CHANGELOG](../CHANGELOG.md) define Semantic Versioning. `0.7.0-dev`
+`VERSION` and [CHANGELOG](../CHANGELOG.md) define Semantic Versioning. `0.8.0-dev`
 continues the prior 0.5.0/0.6.0 platform progression; it is not a published release
 or stable compatibility guarantee. Complete [HARDWARE_TEST](HARDWARE_TEST.md),
 inspect all local regressions and licensing before publishing even the first

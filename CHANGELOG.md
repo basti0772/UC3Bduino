@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0-dev — unreleased development snapshot
+
+- Stage 8: lazy, blocking 10-bit ADC HAL and `analogRead(A0..A7)`, with
+  PBA-derived clock, bounded waits and reset/retry on timeout. Failures return -1.
+- Shared pin descriptions add ADC channel/mux metadata. D0 retains its configured
+  pad and aliases an A-pin when appropriate; A-pins also support digital GPIO.
+- AnalogRead and AnalogMultiChannel examples support SerialUSB or HardwareSerial.
+- External ADVREF/electrical limits, channel switching, accuracy and pending board
+  tests documented. No analogReference, DMA, background sampling or floating point.
+- Installer/source package includes the new HAL/examples; ADC host tests join CI.
+  No physical ADC/USB/UART pass is claimed.
+
 ## 0.7.0-dev — unreleased development snapshot
 
 - Windows installer detects the Arduino sketchbook, validates the external AVR32

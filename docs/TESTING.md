@@ -1,5 +1,92 @@
 # Test record
 
+## Stage 8 – ADC / analogRead
+
+Executed **2026-10-28**, Windows 11, PowerShell 5.1, AVR32 GCC/G++ 4.3.2,
+binutils 2.19.20081016, Make 3.81, Arduino CLI 1.5.2-rc.1 and MSVC native tests.
+Platform **0.8.0-dev**, FQBN **uc3bduino:avr32:uc3b0256**. No MCU hardware or
+Arduino IDE GUI was available and no firmware was uploaded.
+**COMPILE PASS; STATIC REVIEW PASS; HARDWARE NOT TESTED.**
+
+| Check | Status | Evidence / limits |
+| --- | --- | --- |
+| ADC initialization | HOST PASS / COMPILE PASS | Lazy init once, PBA-derived prescaler, startup wait, PM-ready failure and reinitialization after timeout; actual cell startup unmeasured |
+| ADC clock/timing | HOST PASS / STATIC REVIEW PASS | RCSYS, 0.4/8/12/16/60 MHz PBA and divided-bus fixture; <=2.5 MHz target, 128 startup and 18 tracking cycles; clock formulas and fields checked against 32059L |
+| analogRead(A0) compile | COMPILE PASS | Installed AnalogRead with USB output and a separate ADC_USE_USB=0 UART build |
+| A0–A7 and invalid pins | HOST PASS / COMPILE PASS | Real variant/wrapper, all eight pad/channel/mux combinations, invalid index and D0 unconfigured/PA03 alias/PB03 non-ADC cases; no invalid-pin GPIO/ADC access |
+| ADC channel switching | HOST PASS / COMPILE PASS | Actual HAL state machine, channels 0..7, one channel at each START, old EOC drained, result consumed before CHDR; AnalogMultiChannel builds |
+| ADC failure behavior | HOST PASS | CPU COUNT wrap, stopped COUNT, conversion and clock timeouts, unchanged output on HAL failure, reset before channel changes, retry, nested HAL busy guard and IRQ mask preservation |
+| GPIO regression | HOST PASS / COMPILE PASS | Digital wrapper uses the extended map; all GPIO sketches compile; integration fixture uses D0=PB00 separate from ADC pads |
+| Timing / UART / USB regression | HOST PASS / COMPILE PASS | Existing native suites pass; ArduinoMinimal, Blink, SerialHello, USBSerialBlink and every other existing sketch compile |
+| USB + ADC | COMPILE PASS | Both examples with SerialUSB; combined ADC/USB/UART/GPIO/millis/micros/delay/delayMicroseconds fixture at RC, 8 and 16 MHz |
+| UART + ADC | COMPILE PASS | Both examples with HardwareSerial at 115200, U0C/12 MHz fixture; shared Print unchanged |
+| analogRead(A0) hardware | HARDWARE NOT TESTED | No physical conversion, timing or reference measurement |
+| ADC minimum input | HARDWARE NOT TESTED | Ground input acceptance pending |
+| ADC mid-scale input | HARDWARE NOT TESTED | Measured half-reference source acceptance pending |
+| ADC maximum input | HARDWARE NOT TESTED | Input at verified ADVREF acceptance pending |
+| Channel switching hardware | HARDWARE NOT TESTED | Alternating low/high levels, source impedance and first-read settling pending |
+| USB + ADC hardware | HARDWARE NOT TESTED | No USB enumeration, data delivery, IRQ-latency or supply-noise measurement |
+| UART + ADC hardware | HARDWARE NOT TESTED | No physical serial output or concurrent timing measurement |
+
+All **fourteen installed examples** build with `-Wall -Wextra -Werror`. The
+12 MHz crystal/U0C/PA03 setup is a compilation fixture, not a board assertion.
+USB IDs remain zero; all USB paths link but the firmware cannot attach. The RC
+integration build intentionally cannot run USB or 115200-baud UART. ELF/HEX/BIN/
+map validation passes for the fourteen examples, both UART alternatives, the
+three integration builds and all three bare-metal programs. Bootloader/SRAM/
+stack reservations remain intact; no unresolved runtime globals or constructor
+sections. DFU CheckOnly accepts all fourteen standard examples without USB I/O.
+CLI library discovery finds both new examples; diagnosis and smoke tests pass.
+
+`tests/run-host-tests.cmd` now runs **18 native executables** (four added for ADC
+logic and variant/API configurations), all under `/W4 /WX`. Existing DFU tests
+pass **42 synthetic-device checks**; packaging passes **26 host checks**, including
+copied-source hashes, deterministic archives and extracted-source installation.
+These results do not simulate electrical ADC behavior. CI runs native/package
+checks only; it has no AVR32 compiler. Metadata, source allowlist, UTF-8 files,
+PowerShell syntax and whitespace checks also pass.
+
+Measured `avr32-size` text/data/bss bytes at the 12 MHz fixture (bss includes
+the reserved 1 KiB stack):
+
+| Example | text | data | bss |
+| --- | ---: | ---: | ---: |
+| ArduinoMinimal | 996 | 0 | 1036 |
+| DigitalOutput | 1668 | 0 | 1036 |
+| Blink | 1880 | 0 | 1036 |
+| MillisTest | 1896 | 0 | 1044 |
+| MicrosPulse | 1916 | 0 | 1040 |
+| SerialHello | 2280 | 0 | 1120 |
+| SerialMillis | 2592 | 0 | 1120 |
+| SerialEcho | 2328 | 0 | 1120 |
+| GpioSmoke | 1876 | 0 | 1036 |
+| USBSerialHello | 6812 | 0 | 1416 |
+| USBSerialEcho | 6572 | 0 | 1416 |
+| USBSerialBlink | 7448 | 0 | 1416 |
+| AnalogRead (USB) | 7432 | 0 | 1420 |
+| AnalogMultiChannel (USB) | 7456 | 0 | 1420 |
+| AnalogRead (UART) | 3300 | 0 | 1120 |
+| AnalogMultiChannel (UART) | 3324 | 0 | 1120 |
+| AnalogRead with constant 500 instead of ADC (USB control) | 6656 | 0 | 1416 |
+
+Thus the AnalogRead example adds approximately **776 text bytes and 4 aligned
+BSS bytes** relative to the otherwise identical constant-value USB control,
+including ADC/error handling and the pin map. The ADC itself has two one-byte
+state flags. The map grows from 2 to 36 read-only bytes; GPIO images grow by
+48 text bytes including index/address code and alignment. Minimal and UART/USB
+images that do not use the map retain Stage 7 sizes. Bare-metal minimal,
+startup-check and gpio-toggle remain 680/0/1024, 740/8/1036 and 1088/0/1044.
+No floating point, heap or vendor driver library is linked. Map/BIN span remains
+the authority for flash occupancy because section totals can omit gaps.
+
+Run `tests/run-host-tests.cmd` in a Visual Studio native-tools prompt for host
+checks. Reinstall the canonical sources into a fresh sketchbook before target
+builds, then compile the examples using the documented CLI commands. To reproduce
+the UART alternatives set `ADC_USE_USB` to 0 in copies of the two examples;
+for the resource control replace only `analogRead(A0)` with `500` in AnalogRead.
+See [ADC](ADC.md) and [HARDWARE_TEST](HARDWARE_TEST.md) for the pending physical
+test procedure and electrical limits. No release or tag is published.
+
 ## Stage 7 – Packaging / easy installation
 
 Executed **2026-10-26/27**, Windows 11, PowerShell 5.1, AVR32 GCC/G++ 4.3.2,

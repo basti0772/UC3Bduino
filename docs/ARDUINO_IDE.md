@@ -138,7 +138,9 @@ a fresh installation. No AVR8 board platform is required by UC3Bduino.
 ## Configure the one logical GPIO test slot
 
 There is intentionally **no `LED_BUILTIN`**. `D0` is logical slot 0 in a
-one-entry variant table, not a connector label or a physical package pin number.
+variant table, not a connector label or a physical package pin number. Stage 8
+also exposes A0–A7 with verified ADC metadata in that same table; see [ADC](ADC.md).
+An ADC-capable D0 aliases the corresponding A-pin rather than adding a new pad.
 The default entry is invalid, so the minimal sketch builds without selecting any
 pad. The DigitalOutput sketch explicitly fails compilation until configured.
 
@@ -187,7 +189,9 @@ explicitly. These are limited smoke-test semantics, not full Arduino parity.
 `F_CPU` and the HAL getters report nominal 115200 Hz by default, or the explicitly
 configured OSC0 frequency. Arduino init enables the TC0 timer interrupt; long
 interrupt masking loses time and may overrun Serial RX. Serial supports the
-subset documented in SERIAL.md; ADC/PWM, buses and application USB remain unimplemented.
+subset documented in SERIAL.md. ADC and application USB are implemented; see
+[ADC](ADC.md) and [USB_CDC](USB_CDC.md) for configuration and pending hardware
+tests. PWM and buses remain unimplemented.
 Timing limits are documented in TIMING.md. Size reporting includes the reserved 1 KiB stack in SRAM usage;
 program section totals omit alignment gaps, so use the BIN span/map and linker
 checks for flash occupancy. The shared Stage 5 linker reserves the bootloader's

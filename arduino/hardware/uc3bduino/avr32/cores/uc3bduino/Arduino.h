@@ -16,6 +16,8 @@ void init(void);
 void pinMode(uint32_t pin, uint32_t mode);
 void digitalWrite(uint32_t pin, uint32_t value);
 int digitalRead(uint32_t pin);
+/* Native 10-bit value (0..1023), or -1 on invalid pin / ADC failure. */
+int analogRead(uint32_t pin);
 unsigned long millis(void);
 unsigned long micros(void);
 void delay(unsigned long ms);

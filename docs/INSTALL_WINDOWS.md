@@ -1,6 +1,6 @@
 # Install UC3Bduino on Windows
 
-**0.7.0-dev — Experimental / Development.** Compilation and host tests do not
+**0.8.0-dev — Experimental / Development.** Compilation and host tests do not
 verify physical DFU upload, GPIO timing or USB CDC. Follow [HARDWARE_TEST](HARDWARE_TEST.md)
 before relying on a board. FQBN: **`uc3bduino:avr32:uc3b0256`**.
 

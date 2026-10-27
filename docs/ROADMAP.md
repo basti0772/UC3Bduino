@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current: Stage 7 – Packaging / easy installation (0.7.0-dev)**
+**Current: Stage 8 – ADC / analogRead (0.8.0-dev)**
 
 Each stage should have its own review and validation. A checked build is not a
 claim of working peripherals or Arduino compatibility.
@@ -36,9 +36,18 @@ claim of working peripherals or Arduino compatibility.
    See [PACKAGING](PACKAGING.md). Boards Manager/tool redistribution and release
    publication remain deferred until verified dependencies and hardware tests exist.
 
-Later: ADC / analogRead, SPI, Wire / I2C, PWM / analogWrite, external interrupts,
-EEPROM / persistent storage, additional UARTs, USB improvements, wider Arduino
-compatibility and hardware regression tests.
+8. **ADC / analogRead** — lazy ADC HAL, native 10-bit reads, verified A0–A7,
+   bounded waits, examples and host/build checks. External ADVREF; physical
+   accuracy/settling still untested. See [ADC](ADC.md).
+9. **SPI** — SPI.begin, transactions and transfers.
+10. **Wire / I2C** — master bus API.
+11. **PWM / analogWrite** — verified timer/output mapping.
+12. **External interrupts / attachInterrupt** — application interrupt API.
+13. **EEPROM / persistent storage** — storage strategy with flash protections.
+14. **Additional UARTs / refinements** — expand verified serial support.
+
+USB improvements, wider Arduino compatibility and hardware regression tests
+continue alongside these stages.
 
 Board variants and package expansion accompany these stages as verified wiring
 and toolchain support become available.
