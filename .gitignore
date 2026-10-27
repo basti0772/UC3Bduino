@@ -1,5 +1,6 @@
 # Generated firmware and local validation/downloads
 /build/
+/dist/
 /.scratch/
 *.o
 *.d

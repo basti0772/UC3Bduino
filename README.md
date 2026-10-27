@@ -1,30 +1,46 @@
 # UC3Bduino
 
-Arduino-compatible core for Atmel AVR32 UC3B microcontrollers.
+**0.7.0-dev — Experimental / Development.** Arduino-compatible core for
+**AT32UC3B0256**. Stable FQBN: **`uc3bduino:avr32:uc3b0256`**.
+Firmware builds and host tests pass; physical DFU upload, USB CDC enumeration
+and Arduino IDE GUI operation remain unverified. Preserve the factory DFU bootloader.
 
-**Stage 6 – USB CDC / SerialUSB**
+## Quick Start
 
-Native `SerialUSB` adds USB CDC ACM using the integrated device controller,
-EP0 enumeration and static RX/TX buffers. `Serial` remains the hardware USART.
-USB requires verified 8/12/16 MHz OSC0 and authorized developer-configured VID/PID;
-the default unconfigured identity never attaches. **Hardware enumeration/COM
-ports are not tested.** Stage 5's factory DFU upload and protected 8 KiB bootloader
-region remain in place. **DO NOT overwrite the factory USB DFU bootloader.**
+1. Install Arduino IDE 2.x/CLI and the legacy AVR32 toolchain; set
+   `AVR32_TOOLCHAIN_PATH` to its root or bin. [Windows setup](docs/INSTALL_WINDOWS.md)
+   provides exact downloads, checksums, driver and hardware requirements.
+2. Optionally run `.\scripts\get-dfu-tool.ps1` to fetch and verify dfu-programmer
+   1.1.0, then set `UC3B_DFU_TOOL_PATH` to the printed executable directory.
+3. Run `.\scripts\install.ps1 -GpioPort A -GpioPin 3`, **replacing PA03 with a
+   safe verified output from your board schematic**. The script detects the
+   sketchbook; use `-SketchbookPath` to override it. For an unconfigured compile
+   check, omit both GPIO options and use ArduinoMinimal. Existing installs are
+   preserved, not overwritten.
+4. Restart IDE, select **UC3Bduino AT32UC3B0256**, open **File > Examples >
+   UC3BduinoExamples > Blink**, then Verify. `.\scripts\diagnose.ps1` and
+   `.\scripts\smoke-test.ps1` check the installation without flashing.
+5. For explicit Upload, configure the DFU driver and enter factory DFU. Confirm
+   the MCU marking before enabling `-LegacyDevice AT32UC3B0256` for legacy
+   signatures. Follow the [DFU instructions](docs/DFU_UPLOAD.md).
+6. For USBSerialBlink, install with verified OSC0 and your authorized VID/PID
+   using the [USB configuration](docs/USB_CDC.md). Upload from DFU, select the
+   application's CDC COM port and open Serial Monitor.
 
-## First test
+No onboard LED, full board pinout, oscillator or USB ID allocation is assumed.
+Default USB IDs are zero, so SerialUSB stays detached until configured.
+**Boards Manager is not available yet**; the source ZIP uses the same installer.
+See [packaging/version policy](docs/PACKAGING.md), [changelog](CHANGELOG.md),
+[troubleshooting](docs/TROUBLESHOOTING.md) and [hardware checklist](docs/HARDWARE_TEST.md).
 
-1. Install UC3Bduino into the actual IDE sketchbook, configuring OSC0, authorized
-   VID/PID and safe D0 mapping as described in [USB setup](docs/USB_CDC.md).
-2. Configure dfu-programmer 1.1.0; check the MCU marking for a legacy target.
-3. Select **UC3Bduino AT32UC3B0256** and open `USBSerialBlink`.
-4. Click **Verify**, enter factory DFU mode and click **Upload**.
-5. Wait for the application CDC COM port; select it and open Arduino Serial Monitor.
-6. Expect repeated `UC3Bduino alive: ... ms` while D0 toggles at nominal 1 Hz.
-   Test `USBSerialEcho` by sending text back to the board.
-
-See [DFU setup, reset/pin sequence and troubleshooting](docs/DFU_UPLOAD.md)
-and [local IDE installation](docs/ARDUINO_IDE.md) for exact commands. A DFU device
-does not need a COM port. The factory bootloader requires supported OSC0 hardware.
+| Feature | Development status |
+| --- | --- |
+| GPIO | Implemented; explicit D0 mapping, build/host checks |
+| millis/micros/delay/delayMicroseconds | Implemented; build/host checks |
+| HardwareSerial / Print | Implemented; explicit UART/clock, build/host checks |
+| Factory DFU upload | Implemented wrapper; mock transport tested, physical upload pending |
+| USB CDC / SerialUSB | Implemented; build/protocol host tests, hardware enumeration pending |
+| ADC, SPI, I2C/Wire, PWM | Not implemented |
 
 ## Core status
 
@@ -72,7 +88,7 @@ Use the actual sketchbook path from IDE Preferences or
 
 ```powershell
 $env:AVR32_TOOLCHAIN_PATH = 'D:\Tools\avr32-toolchain' # replace with your installation
-.\scripts\install-arduino-hardware.ps1 -SketchbookPath 'D:\ArduinoSketchbook'
+.\scripts\install.ps1 -SketchbookPath 'D:\ArduinoSketchbook'
 ```
 
 The installer copies the platform template and unchanged shared HAL/startup/linker
@@ -207,7 +223,7 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
   Physical enumeration, throughput, interrupt latency and suspend current need
   board validation. USB VID/PID must be configured by the developer.
 - No SPI, Wire, ADC, PWM, external-interrupt API or Boards Manager distribution.
-  Stage 7 is packaging / easy installation.
+  Stage 7 supplies the local installer and development source archive.
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and
 [THIRD_PARTY](docs/THIRD_PARTY.md). Original project files use the [MIT license](LICENSE).

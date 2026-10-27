@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current: Stage 6 – USB CDC / SerialUSB**
+**Current: Stage 7 – Packaging / easy installation (0.7.0-dev)**
 
 Each stage should have its own review and validation. A checked build is not a
 claim of working peripherals or Arduino compatibility.
@@ -31,8 +31,10 @@ claim of working peripherals or Arduino compatibility.
    at 48 MHz, USBB device driver, EP0/CDC ACM, static rings and shared Print API.
    VID/PID must be supplied by the developer. Physical enumeration/Windows COM,
    TX/RX and DFU transition remain untested; see [USB_CDC](USB_CDC.md).
-7. **Packaging / easy installation** — next: versioned tools/core distributions,
-   checksums, simple setup and Boards Manager installation.
+7. **Packaging / easy installation** — Windows installer, common compiler
+   detection, diagnostics, bundled examples, source archives/checksums and host CI.
+   See [PACKAGING](PACKAGING.md). Boards Manager/tool redistribution and release
+   publication remain deferred until verified dependencies and hardware tests exist.
 
 Later: ADC / analogRead, SPI, Wire / I2C, PWM / analogWrite, external interrupts,
 EEPROM / persistent storage, additional UARTs, USB improvements, wider Arduino

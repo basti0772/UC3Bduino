@@ -1,4 +1,4 @@
-# Local Arduino installation (Stage 6 – USB DFU and CDC)
+# Arduino platform implementation and local installation
 
 The local package exposes **UC3Bduino AT32UC3B0256**, with FQBN
 `uc3bduino:avr32:uc3b0256`. It provides a small C++98 core, `setup()`/`loop()`,
@@ -10,6 +10,11 @@ Stage 5 integrates the factory DFU uploader. Stage 6 adds native SerialUSB;
 configure authorized VID/PID and supported OSC0 as in [USB_CDC](USB_CDC.md).
 Hardware execution remains untested.
 See [TESTING](TESTING.md) for the distinction between CLI and GUI results.
+
+For the Stage 7 front-end installer, bundled examples, diagnostics and a complete
+first test, start with [INSTALL_WINDOWS](INSTALL_WINDOWS.md). This page retains
+the lower-level installation/build details; `install-arduino-hardware.ps1`
+remains available for compatibility with explicit sketchbook configuration.
 
 ## Install locally on Windows
 

@@ -30,10 +30,10 @@ Set-StrictMode -Version Latest
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
 try {
-    . (Join-Path $PSScriptRoot 'dfu-common.ps1')
+    . (Join-Path $PSScriptRoot 'installation-common.ps1')
     $dfuTool = 'auto'
     # Compile-only installation remains possible without an upload tool.
-    if ($DfuToolPath) { $dfuTool = Resolve-DfuTool $DfuToolPath }
+    if ($DfuToolPath) { $dfuTool = Test-Uc3DfuTool $DfuToolPath }
     $sketchbook = [IO.Path]::GetFullPath($SketchbookPath)
     $destination = Join-Path $sketchbook 'hardware/uc3bduino/avr32'
     if (Test-Path -LiteralPath $destination) {
@@ -91,25 +91,9 @@ try {
         }
     }
 
-    if ($ToolchainPath) {
-        $candidate = [IO.Path]::GetFullPath($ToolchainPath)
-        if (Test-Path -LiteralPath (Join-Path $candidate 'bin/avr32-gcc.exe')) {
-            $binDirectory = Join-Path $candidate 'bin'
-        } elseif (Test-Path -LiteralPath (Join-Path $candidate 'avr32-gcc.exe')) {
-            $binDirectory = $candidate
-        } else {
-            throw "No avr32-gcc.exe in '$ToolchainPath' or its bin directory."
-        }
-    } else {
-        $gcc = Get-Command avr32-gcc.exe -CommandType Application -ErrorAction SilentlyContinue
-        if (-not $gcc) { throw 'Set AVR32_TOOLCHAIN_PATH or pass -ToolchainPath (legacy AVR32 GNU root or bin).' }
-        $binDirectory = Split-Path -Parent $gcc.Source
-    }
-    foreach ($tool in @('gcc', 'g++', 'as', 'ld', 'ar', 'objcopy', 'size')) {
-        if (-not (Test-Path -LiteralPath (Join-Path $binDirectory "avr32-$tool.exe") -PathType Leaf)) {
-            throw "Missing avr32-$tool.exe in '$binDirectory'. Arduino sketches require the C++ compiler too."
-        }
-    }
+    $toolchain = Resolve-Uc3Toolchain $ToolchainPath
+    $binDirectory = $toolchain.Bin
+    Write-Host $toolchain.Version
 
     $template = Join-Path $repoRoot 'arduino/hardware/uc3bduino/avr32'
     $shared = @(
@@ -143,6 +127,24 @@ try {
         @{ Source = 'scripts/dfu-common.ps1'; Target = 'tools/dfu-common.ps1' },
         @{ Source = 'docs/DFU_UPLOAD.md'; Target = 'docs/DFU_UPLOAD.md' }
     )
+    # Installed examples remain copies of the canonical sketches, like the HAL.
+    foreach ($example in Get-ChildItem -LiteralPath (Join-Path $repoRoot 'examples') -Directory) {
+        if (Test-Path -LiteralPath (Join-Path $example.FullName ($example.Name + '.ino'))) {
+            foreach ($file in Get-ChildItem -LiteralPath $example.FullName -File) {
+                if ($file.Extension -in @('.ino', '.md')) {
+                    $shared += @{ Source = "examples/$($example.Name)/$($file.Name)"; Target = "libraries/UC3BduinoExamples/examples/$($example.Name)/$($file.Name)" }
+                }
+            }
+        }
+    }
+    foreach ($doc in Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') -Filter '*.md' -File) {
+        $relative = "docs/$($doc.Name)"
+        if ($relative -notin $shared.Target) {
+            $shared += @{ Source = $relative; Target = $relative }
+        }
+    }
+    $shared += @{ Source = 'VERSION'; Target = 'VERSION' }
+    $shared += @{ Source = 'CHANGELOG.md'; Target = 'CHANGELOG.md' }
     foreach ($entry in $shared) {
         if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $entry.Source) -PathType Leaf)) {
             throw "Missing shared source: $($entry.Source). Install from a complete UC3Bduino checkout."
@@ -191,7 +193,7 @@ try {
         [IO.File]::WriteAllText((Join-Path $destination 'shared-sources.json'), ($manifest | ConvertTo-Json -Depth 3), $utf8)
         Write-Host "Installed: $destination"
         Write-Host 'FQBN: uc3bduino:avr32:uc3b0256. Restart Arduino IDE after installation.'
-        if (-not $hasPin) { Write-Host 'D0 is unconfigured. ArduinoMinimal builds; DigitalOutput requires an explicit pin mapping.' }
+        if (-not $hasPin) { Write-Host 'D0 is unconfigured. ArduinoMinimal builds; Blink requires -GpioPort and -GpioPin from your schematic.' }
         if (-not $SerialRoute) { Write-Host 'Serial is unconfigured; begin() leaves it inactive until a verified route is selected.' }
         if (-not $hasOsc) { Write-Host 'Internal RC selected. 115200 baud requires an explicitly configured faster clock.' }
         if (-not $hasUsb) { Write-Host 'USB VID/PID must be configured by the developer. SerialUSB stays detached until configured.' }

@@ -29,6 +29,40 @@ identify GCC 4.4.7, binutils 2.23.1, and Newlib 1.16.0.
 a tested alternative. Historical vendor OS support does not establish Windows 11
 support; the validation record describes the concrete Windows 11 result here.
 
+## Stage 7 packaging assessment (2026-10-26)
+
+The archive's [2.4.2 Windows installer](https://ww1.microchip.com/downloads/archive/avr32-gnu-toolchain-2.4.2-setup.exe)
+responded HTTP 200 to HEAD with **51,312,781 bytes**. It was not installed during
+this stage and no installer SHA-256 is asserted. The existing tested installation
+contains **1,907 files / 187,477,307 bytes** (sum of file lengths, not allocated
+disk space). The [2.4.2 release notes](https://ww1.microchip.com/downloads/en/DeviceDoc/AVR32%20GNU%20Toolchain%202.4.2.pdf)
+list GCC 4.3.2-atmel.1.2.0, binutils 2.19.atmel.1.2.0, Newlib 1.16.0 and headers
+2.3.4, consistent with the compiler family here but not proof of the installed
+package's provenance. They require at least 250 MB free space and list Windows
+2000/XP/Vista and historical Linux distributions. Their 64-bit support statement
+is negative; local Windows 11 build success is an empirical result, not vendor support.
+
+Microchip lists 2.4.2 Linux packages for old Fedora/Ubuntu/SUSE/Red Hat systems and
+3.4.3 Linux 32/64-bit packages. Those are **not tested alternatives** on a current
+Linux distribution. Installer and upload integration in this release target Windows;
+do not infer Linux compatibility from the existence of a vendor download. The archive
+page's 2.4.2 "Linux Source Code" link currently points to the same Windows EXE;
+it is not evidence of a recovered corresponding-source archive.
+
+Required executables are gcc, g++, as, ld, ar, objcopy and size (all with the
+`avr32-` prefix). Make is needed only for the bare-metal wrapper. Keep the full
+installation, including device/standard headers and compiler internals; copying
+only these EXEs is insufficient. Path resolution is shared by the Windows scripts:
+explicit `-ToolchainPath` > `AVR32_TOOLCHAIN_PATH` > PATH. Root/bin are accepted;
+all tools plus target/multilib and C/C++ version consistency are checked.
+Arduino receives the chosen absolute bin in `platform.local.txt`; diagnosis
+checks that installed choice. Direct Make accepts `TOOLCHAIN_BIN` for the same bin.
+
+GCC/binutils and other included components have separate redistribution terms,
+and the original installer/corresponding sources have not been fully audited.
+The compiler stays external; no compiler auto-download, binary redistribution
+or blanket non-redistributability claim is made. See [THIRD_PARTY](THIRD_PARTY.md).
+
 ## Target selection
 
 `tools/targets/at32uc3b0256.mk` owns `-mpart=uc3b0256` and the linker script path.

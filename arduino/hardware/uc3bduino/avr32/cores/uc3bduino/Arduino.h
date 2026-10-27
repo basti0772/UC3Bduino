@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
 #include <stdint.h>
+#include "UC3BduinoVersion.h"
 
 #define LOW 0
 #define HIGH 1

@@ -1,5 +1,74 @@
 # Test record
 
+## Stage 7 – Packaging / easy installation
+
+Executed **2026-10-26/27**, Windows 11, PowerShell 5.1, AVR32 GCC/G++ 4.3.2,
+binutils 2.19.20081016, Make 3.81, Arduino CLI 1.5.2-rc.1 and MSVC native tests.
+FQBN remains **uc3bduino:avr32:uc3b0256**, platform version **0.7.0-dev**.
+No MCU/USB hardware or Arduino IDE GUI was available. No firmware was uploaded.
+
+- All twelve **installed** Arduino examples compile with warnings as errors.
+  `arduino-cli lib examples UC3BduinoExamples --fqbn uc3bduino:avr32:uc3b0256`
+  discovers all twelve bundled examples. CLI board discovery reports the stable FQBN.
+- Real install used a CLI configuration with a sketchbook path containing spaces;
+  no `-SketchbookPath` override was required. PA03/U0C/12 MHz crystal are compile
+  fixtures only. USB IDs remain zero (never attach); complete USB code still links.
+- Independent ELF/HEX/BIN/map checks pass on all twelve examples and all three
+  bare-metal builds. Application starts at 0x80002000, excludes the bootloader,
+  reserves the first SRAM word and 1 KiB stack, and has no unresolved globals.
+  DFU `-CheckOnly` accepts all twelve images without sending USB commands.
+- `diagnose.ps1` passes CLI/platform/compiler/DFU version/board and ArduinoMinimal
+  compile checks. IDE is reported not found and DFU device not connected.
+  `smoke-test.ps1` separately compiles installed Blink and USBSerialBlink, retaining
+  logs/artifacts. Both commands exit successfully without any upload.
+- `tests/run-host-tests.cmd` passes all fourteen native UART, Print, timing and
+  USB protocol/API/clock executables. Existing DFU tests pass **42 host checks**
+  with a synthetic device; their simulated erase/flash messages are not hardware activity.
+- Packaging host tests cover explicit/environment/PATH resolution, paths with
+  spaces, wrong targets/C++ versions/DFU versions, CLI configuration resolution,
+  WhatIf, refusal to overwrite existing user data, pin conflicts, all copied-source
+  hashes, rejected download checksums, deterministic ZIPs, archive contents/checksums
+  and installation from extracted source without Git. They use an explicitly fake
+  compiler and make no firmware-build claim.
+- The optional DFU helper accepts the original 423421-byte upstream ZIP with the
+  documented SHA-256 and extracts all DLLs/licenses; a bad archive is rejected
+  before extraction. This checks offline extraction, not a fresh live download.
+- UTF-8 sources, synchronized version metadata, complete source allowlist,
+  PowerShell syntax and `git diff --check` pass. Firmware/HAL/startup/linker sources,
+  board identity and compile/upload recipes are unchanged; only the Arduino header
+  includes the new version macros. No third-party binaries enter the source archive.
+
+Measured text/data/bss bytes (bss includes the reserved stack):
+
+| Example | text | data | bss |
+| --- | ---: | ---: | ---: |
+| ArduinoMinimal | 996 | 0 | 1036 |
+| DigitalOutput | 1620 | 0 | 1036 |
+| Blink | 1832 | 0 | 1036 |
+| MillisTest | 1848 | 0 | 1044 |
+| MicrosPulse | 1868 | 0 | 1040 |
+| SerialHello | 2280 | 0 | 1120 |
+| SerialMillis | 2592 | 0 | 1120 |
+| SerialEcho | 2328 | 0 | 1120 |
+| GpioSmoke | 1828 | 0 | 1036 |
+| USBSerialHello | 6812 | 0 | 1416 |
+| USBSerialEcho | 6572 | 0 | 1416 |
+| USBSerialBlink | 7400 | 0 | 1416 |
+| Bare-metal minimal | 680 | 0 | 1024 |
+| Bare-metal startup-check | 740 | 8 | 1036 |
+| Bare-metal gpio-toggle | 1088 | 0 | 1044 |
+
+The UART-only images are four bytes larger than the Stage 6 record. Symbol and
+disassembly comparison isolates a wider conditional branch and alignment in
+`uc3b_uart_init`; the canonical UART source/configuration is identical. This is
+not a new hardware feature. GPIO and USB resource totals remain unchanged.
+
+CI runs source/package and host tests only, with **no AVR32 compiler**. Local
+firmware results above are distinct from CI and physical hardware validation.
+The unpublished development source archive is prepared with checksums; no release,
+tag or Boards Manager index is published. Follow [HARDWARE_TEST](HARDWARE_TEST.md)
+for the still-pending DFU/launch/CDC/GUI acceptance run.
+
 ## Stage 6 – USB CDC / SerialUSB
 
 Executed **2026-10-26**, Windows, AVR32 GCC/G++ 4.3.2, binutils 2.19.20081016,
