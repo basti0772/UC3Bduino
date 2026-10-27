@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+uc3b0256.name=UC3Bduino AT32UC3B0256
+uc3b0256.build.mcu=uc3b0256
+uc3b0256.build.f_cpu=115200L
+uc3b0256.build.board=UC3BDUINO_UC3B0256
+uc3b0256.build.core=uc3bduino
+uc3b0256.build.variant=uc3b0256
+# Factory DFU reserves 8 KiB flash and the first SRAM word.
+uc3b0256.upload.maximum_size=253952
+uc3b0256.upload.maximum_data_size=32764
+uc3b0256.upload.tool.default=uc3bdfu
+uc3b0256.upload.protocol=atmel-dfu

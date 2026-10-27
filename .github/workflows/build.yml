@@ -1,0 +1,40 @@
+name: Source package and host tests (no AVR32 compiler)
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host-and-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check metadata and all PowerShell syntax
+        shell: powershell
+        run: |
+          python tests/check_package.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Get-ChildItem scripts,tests -Filter *.ps1 -Recurse | ForEach-Object {
+            $tokens = $null; $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw ($errors | Out-String) }
+          }
+      - name: Host protocol, ring buffer, Print, timing and ADC tests
+        shell: powershell
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'MSVC not found' }
+          $vcvars = Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
+          & cmd.exe /d /c "`"$vcvars`" && tests\run-host-tests.cmd"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: DFU wrapper tests with fake transport (no hardware)
+        shell: powershell
+        run: ./tests/test_dfu_upload.ps1
+      - name: Installer and archive host tests
+        shell: powershell
+        run: ./tests/test_packaging.ps1
+      - name: Assemble development source archive
+        shell: powershell
+        run: ./scripts/package-release.ps1
