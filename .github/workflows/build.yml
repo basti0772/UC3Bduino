@@ -9,7 +9,7 @@ jobs:
   host-and-package:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - name: Check metadata and all PowerShell syntax
         shell: powershell
         run: |

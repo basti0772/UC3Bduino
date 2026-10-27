@@ -17,7 +17,11 @@ function Assert([bool]$Condition, [string]$Name) {
 function Reject([scriptblock]$Action, [string]$Pattern, [string]$Name) {
     $errorText = ''
     try { & $Action | Out-Null } catch { $errorText = $_.Exception.Message }
-    Assert ($errorText -match $Pattern) $Name
+    # Windows PowerShell formats native stderr to the console width. CI can wrap
+    # a diagnostic between words even though the installer rejected correctly.
+    $normalized = [regex]::Replace($errorText, '\s+', ' ')
+    if ($normalized -notmatch $Pattern) { throw "FAIL: $Name. Expected '$Pattern', received: $errorText" }
+    Assert $true $Name
 }
 function Run-Script([string]$Relative, [string[]]$ScriptArgs) {
     Invoke-Uc3Process 'powershell.exe' (@('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',
