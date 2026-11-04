@@ -6,10 +6,12 @@
 #include "usb_config.h"
 #include "usb_device_core.h"
 #include "usb_cdc.h"
+#include "usb_fifo.h"
 #include "../hal/uc3b_device.h"
 #include "../hal/uc3b_irq.h"
 #include "../hal/uc3b_clock.h"
 #include "../hal/uc3b_system_timer.h"
+#include "../hal/uc3b_bootloader.h"
 
 typedef char usb_layout_check[(AVR32_USBB_ADDRESS == 0xfffe0000UL
     && AVR32_USBB_SLAVE_ADDRESS == 0xd0000000UL && AVR32_USBB_IRQ == 544
@@ -57,15 +59,13 @@ static void barrier(void)
 static void fifo_read(uint8_t ep, uint8_t *data, uint16_t size)
 {
     volatile uint8_t *fifo = (volatile uint8_t *)(AVR32_USBB_SLAVE_ADDRESS + 0x10000UL * ep);
-    /* 22.8.4: each endpoint owns a 64 KiB virtual window. The hardware
-     * advances the FIFO even when software always accesses its first byte.
-     */
-    while (size--) { *data++ = *fifo; }
+    /* 32059L 22.8.4: each endpoint owns a 64 KiB virtual window. */
+    usb_fifo_read_bytes(fifo, data, size);
 }
 static void fifo_write(uint8_t ep, const uint8_t *data, uint16_t size)
 {
     volatile uint8_t *fifo = (volatile uint8_t *)(AVR32_USBB_SLAVE_ADDRESS + 0x10000UL * ep);
-    while (size--) { *fifo = *data++; }
+    usb_fifo_write_bytes(fifo, data, size);
 }
 static uint16_t fifo_count(uint8_t ep)
 {
@@ -222,6 +222,16 @@ void usb_hw_stop(void)
     barrier();
     uc3b_clock_disable_usb();
     usb_hw_unlock(key);
+}
+
+void usb_hw_request_bootloader(void)
+{
+    /* Called only after the CDC close request's status ACK and a grace period.
+     * Failed preparation leaves the running application and USB intact.
+     */
+    if (!uc3b_bootloader_prepare()) { return; }
+    usb_hw_stop();
+    uc3b_system_reset();
 }
 
 __attribute__((__interrupt__)) void uc3b_usb_isr(void)

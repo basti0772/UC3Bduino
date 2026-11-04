@@ -2,6 +2,16 @@
 #ifndef UC3BDUINO_USB_CONFIG_H
 #define UC3BDUINO_USB_CONFIG_H
 
+/* Explicit opt-in: requires a separately selected, verified bootloader backend.
+ * Default off preserves ordinary 1200-baud CDC use and never changes boot fuses.
+ */
+#ifndef UC3BDUINO_USB_AUTO_UPLOAD
+#define UC3BDUINO_USB_AUTO_UPLOAD 0
+#endif
+#if UC3BDUINO_USB_AUTO_UPLOAD != 0 && UC3BDUINO_USB_AUTO_UPLOAD != 1
+#error "UC3BDUINO_USB_AUTO_UPLOAD must be 0 or 1"
+#endif
+
 /* USB VID/PID must be configured by the developer.
  * Zero means unconfigured: begin() fails without enabling USB or attaching.
  * Supply only IDs you are authorized to use, in compiler flags or here.

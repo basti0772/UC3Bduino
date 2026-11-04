@@ -23,6 +23,8 @@ static bool halted[4], busy[4], foreground = true, out_irq;
 static uint8_t hw_address;
 static uint32_t ticks, locks;
 static bool auto_ack;
+static unsigned boot_requests;
+void usb_hw_request_bootloader(void) { ++boot_requests; }
 
 bool usb_hw_start(void) { ++starts; hw_started = !fail_start; return hw_started; }
 void usb_hw_stop(void) { ++stops; hw_started = false; }
@@ -81,6 +83,7 @@ uint32_t usb_hw_millis(void)
 /* Compile the real portable sources, with only the register adapter replaced. */
 #include "../src/usb/usb_device_core.c"
 #include "../src/usb/usb_cdc.c"
+#include "../src/usb/usb_boot_touch.c"
 
 static void setup(uint8_t type, uint8_t request, uint16_t value, uint16_t index, uint16_t length)
 {

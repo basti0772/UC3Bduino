@@ -19,7 +19,7 @@
 static Uc3bGpioPin selected;
 static uint8_t selected_function, selected_channel;
 static unsigned int mux_calls, read_calls, gpio_calls;
-static bool fail_mux, fail_adc;
+static bool fail_mux, fail_adc, written_high;
 bool uc3b_gpio_is_valid(Uc3bGpioPin pin) { return (pin.port == 0 && pin.pin < 32) || (pin.port == 1 && pin.pin < 12); }
 bool uc3b_gpio_select_peripheral(Uc3bGpioPin pin, uint8_t function)
 {
@@ -34,7 +34,7 @@ bool uc3b_adc_read_channel(uint8_t channel, uint16_t *value)
 bool uc3b_gpio_config_input(Uc3bGpioPin pin) { selected = pin; ++gpio_calls; return true; }
 bool uc3b_gpio_config_output(Uc3bGpioPin pin) { selected = pin; ++gpio_calls; return true; }
 bool uc3b_gpio_enable_pullup(Uc3bGpioPin pin) { selected = pin; ++gpio_calls; return true; }
-bool uc3b_gpio_write(Uc3bGpioPin pin, bool high) { (void)high; selected = pin; ++gpio_calls; return true; }
+bool uc3b_gpio_write(Uc3bGpioPin pin, bool high) { written_high = high; selected = pin; ++gpio_calls; return true; }
 bool uc3b_gpio_read(Uc3bGpioPin pin) { selected = pin; ++gpio_calls; return true; }
 #include "../arduino/hardware/uc3bduino/avr32/cores/uc3bduino/wiring_analog.cpp"
 #include "../arduino/hardware/uc3bduino/avr32/cores/uc3bduino/wiring_digital.cpp"
@@ -66,6 +66,22 @@ int main(void)
     if (ADC_TEST_CONFIGURED) {
         assert(selected.port == ADC_TEST_PORT && selected.pin == ADC_TEST_BIT);
     }
+    i = mux_calls;
+    assert(analogRead(LED_BUILTIN) == -1 && mux_calls == i);
+    assert(NUM_DIGITAL_PINS == 16 && LED_BUILTIN_ACTIVE_LOW == 1);
+    assert(uc3b_pin_map[MOSI].pin == 14 && uc3b_pin_map[MISO].pin == 25);
+    assert(uc3b_pin_map[SCK].pin == 15 && uc3b_pin_map[SS].pin == 16);
+    assert(analogRead(MOSI) == -1 && analogRead(MISO) == -1);
+    assert(analogRead(SCK) == -1 && analogRead(SS) == -1);
+    assert(uc3b_pin_map[SDA].pin == 10 && uc3b_pin_map[SCL].pin == 9);
+    assert(analogRead(SDA) == -1 && analogRead(SCL) == -1);
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LED_BUILTIN_ON);
+    assert(selected.port == 0 && selected.pin == 23 && !written_high);
+    digitalWrite(LED_BUILTIN, LED_BUILTIN_OFF);
+    assert(selected.port == 0 && selected.pin == 23 && written_high);
+    digitalWrite(A0, HIGH); // Other digital pins retain normal HIGH semantics.
+    assert(selected.port == 0 && selected.pin == 3 && written_high);
     fail_adc = true;
     assert(analogRead(A0) == -1);
     fail_mux = true; i = read_calls;

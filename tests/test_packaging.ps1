@@ -99,6 +99,12 @@ class Fixture {
     Assert (-not (Test-Path -LiteralPath $context.Platform)) 'WhatIf creates no platform'
     [void](Run-Script 'scripts/install.ps1' $argsInstall)
     Assert (Test-Path -LiteralPath (Join-Path $context.Platform 'libraries/UC3BduinoExamples/examples/USBSerialBlink/USBSerialBlink.ino')) 'installer assembles bundled examples'
+    Assert ((Get-FileHash -LiteralPath (Join-Path $context.Platform 'cores/uc3bduino/SPI.cpp')).Hash -eq
+        (Get-FileHash -LiteralPath (Join-Path $root 'arduino/hardware/uc3bduino/avr32/cores/uc3bduino/SPI.cpp')).Hash) 'installer preserves SPI core source'
+    Assert (Test-Path -LiteralPath (Join-Path $context.Platform 'libraries/UC3BduinoExamples/examples/SPILoopback/SPILoopback.ino')) 'installer includes SPI loopback example'
+    Assert ((Get-FileHash -LiteralPath (Join-Path $context.Platform 'cores/uc3bduino/Wire.cpp')).Hash -eq
+        (Get-FileHash -LiteralPath (Join-Path $root 'arduino/hardware/uc3bduino/avr32/cores/uc3bduino/Wire.cpp')).Hash) 'installer preserves Wire core source'
+    Assert (Test-Path -LiteralPath (Join-Path $context.Platform 'libraries/UC3BduinoExamples/examples/WireApiSmoke/WireApiSmoke.ino')) 'installer includes Wire API smoke example'
     $props = Read-Uc3Properties (Join-Path $context.Platform 'platform.local.txt')
     Assert ($props['compiler.path'] -eq ($bin.Replace('\','/') + '/') -and $props['tools.uc3bdfu.path'] -eq $dfu.Replace('\','/')) 'installer pins selected compiler and DFU paths'
     $manifest = Get-Content -LiteralPath (Join-Path $context.Platform 'shared-sources.json') -Raw | ConvertFrom-Json
@@ -114,6 +120,31 @@ class Fixture {
     $invalidBook = Join-Path $work 'invalid board'
     Reject { Run-Script 'scripts/install.ps1' @('-SketchbookPath',$invalidBook,'-GpioPort','A','-GpioPin','18','-Osc0Hz','12000000','-Osc0Mode','Crystal') } 'conflicts with an OSC0 pad' 'reject conflicting board configuration'
     Assert (-not (Test-Path -LiteralPath $invalidBook)) 'invalid configuration makes no destination'
+    $defaultBook = Join-Path $work 'reference board defaults'
+    [void](Run-Script 'scripts/install.ps1' @('-SketchbookPath',$defaultBook))
+    $defaultPlatform = Join-Path $defaultBook 'hardware/uc3bduino/avr32'
+    $boardProps = Read-Uc3Properties (Join-Path $defaultPlatform 'boards.local.txt')
+    Assert ($boardProps['uc3b0256.build.f_cpu'] -eq '12000000L' -and $boardProps['uc3b0256.build.extra_flags'] -match 'UC3B_OSC0_HZ=12000000UL' -and $boardProps['uc3b0256.build.extra_flags'] -match 'UC3B_OSC0_CRYSTAL=1') 'reference board defaults to 12 MHz crystal'
+    Assert ($boardProps['uc3b0256.build.extra_flags'] -notmatch 'USB_AUTO_UPLOAD|FACTORY_DFU_GP31') 'auto-upload backend is off by default'
+    $autoBook = Join-Path $work 'auto-upload opt-in'
+    $autoArgs = @('-SketchbookPath',$autoBook,'-EnableLegacyAutoUpload','-UsbVendorId','65535','-UsbProductId','65534','-LegacyDevice','AT32UC3B0256')
+    [void](Run-Script 'scripts/install.ps1' $autoArgs)
+    $autoPlatform = Join-Path $autoBook 'hardware/uc3bduino/avr32'
+    $autoProps = Read-Uc3Properties (Join-Path $autoPlatform 'boards.local.txt')
+    Assert ($autoProps['uc3b0256.build.extra_flags'] -match 'USB_AUTO_UPLOAD=1' -and $autoProps['uc3b0256.build.extra_flags'] -match 'FACTORY_DFU_GP31=1') 'explicit option enables portable touch and legacy backend together'
+    Assert (Test-Path -LiteralPath (Join-Path $autoPlatform 'tools/AutoUpload.ps1')) 'installed platform includes auto uploader'
+    $autoLocal = Read-Uc3Properties (Join-Path $autoPlatform 'platform.local.txt')
+    Assert ($autoLocal['tools.uc3bdfu.upload.pattern'].Contains('tools/AutoUpload.ps1') -and $autoLocal['tools.uc3bdfu.upload.pattern'].Contains('-Port "{serial.port}"') -and $autoProps['uc3b0256.upload.use_1200bps_touch'] -eq 'false') 'opt-in Arduino recipe delegates touch once to AutoUpload'
+    Assert (-not $props.ContainsKey('tools.uc3bdfu.upload.pattern')) 'default install retains manual DFU recipe'
+    Reject { Run-Script 'scripts/install.ps1' @('-SketchbookPath',$invalidBook,'-EnableLegacyAutoUpload') } 'Legacy auto-upload requires' 'auto-upload rejects missing USB identity and device confirmation'
+    Reject { Run-Script 'scripts/install.ps1' @('-SketchbookPath',$invalidBook,'-EnableLegacyAutoUpload','-UsbVendorId','65535','-UsbProductId','65534','-LegacyDevice','AT32UC3B0256','-Osc0Hz','16000000','-Osc0Mode','Crystal') } 'Legacy auto-upload requires' 'auto-upload rejects untested 16 MHz profile'
+    Assert ([IO.File]::ReadAllText((Join-Path $defaultPlatform 'variants/uc3b0256/test_pin_config.h')).Contains('#define UC3BDUINO_TEST_PIN_BIT 23')) 'reference D0 defaults to onboard LED PA23'
+    $rcBook = Join-Path $work 'explicit internal RC'
+    [void](Run-Script 'scripts/install.ps1' @('-SketchbookPath',$rcBook,'-InternalRc'))
+    $rcProps = Read-Uc3Properties (Join-Path $rcBook 'hardware/uc3bduino/avr32/boards.local.txt')
+    Assert ($rcProps['uc3b0256.build.f_cpu'] -eq '115200L' -and $rcProps['uc3b0256.build.extra_flags'] -match 'UC3B_CLOCK_SOURCE=1' -and $rcProps['uc3b0256.build.extra_flags'] -notmatch 'UC3B_OSC0_HZ') 'explicit RC overrides board clock and F_CPU coherently'
+    Reject { Run-Script 'scripts/install.ps1' @('-SketchbookPath',$invalidBook,'-InternalRc','-UsbVendorId','1','-UsbProductId','1') } 'USB CDC requires' 'reject USB identity with internal RC'
+    Reject { Run-Script 'scripts/install.ps1' @('-SketchbookPath',$invalidBook,'-SerialRoute','U1A','-GpioPort','B','-GpioPin','0') } 'onboard LED pad PA23' 'reject UART conflict with fixed LED even when D0 moves'
     $badZip = Join-Path $work 'invalid.zip'
     [IO.File]::WriteAllText($badZip,'not an upstream tool')
     $badDestination = Join-Path $work 'bad download'

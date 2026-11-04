@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 #pragma once
-/* Installer can populate this from explicit -GpioPort/-GpioPin parameters.
- * No LED_BUILTIN is defined. See docs/ARDUINO_IDE.md before selecting a pad.
+/* Reference board: D0 defaults to the red D1 LED pad PA23. Installer can
+ * override this test slot; LED_BUILTIN always keeps its fixed PA23 mapping.
  */
-#define UC3BDUINO_TEST_PIN_CONFIGURED 0
-#define UC3BDUINO_TEST_PIN_PORT 255
-#define UC3BDUINO_TEST_PIN_BIT 255
+#define UC3BDUINO_TEST_PIN_CONFIGURED 1
+#define UC3BDUINO_TEST_PIN_PORT 0
+#define UC3BDUINO_TEST_PIN_BIT 23

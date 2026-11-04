@@ -8,8 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM = ROOT / 'arduino/hardware/uc3bduino/avr32'
 version = (ROOT / 'VERSION').read_text().strip()
-match = re.fullmatch(r'(0)\.(\d+)\.(\d+)-dev', version)
-assert match, 'Expected a 0.x.y-dev version'
+match = re.fullmatch(r'(0)\.(\d+)\.(\d+)-(?:dev|rc[1-9]\d*)', version)
+assert match, 'Expected a development or RC version'
 assert f'version={version}\n' in (PLATFORM / 'platform.txt').read_text()
 assert f'version={version}\n' in (PLATFORM / 'libraries/UC3BduinoExamples/library.properties').read_text()
 header = (PLATFORM / 'cores/uc3bduino/UC3BduinoVersion.h').read_text()

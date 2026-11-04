@@ -1,6 +1,19 @@
 # Architecture direction
 
-**Stage 8 – ADC / analogRead**
+**Stage 10 – Wire / software I2C**
+
+Core `Wire.h/.cpp` uses `uc3b_i2c.c` plus a GPIO adapter to implement a synchronous
+foreground master. Output-enable aliases emulate open drain without ever driving
+HIGH. CPU COUNT bounds timing, stretching and failures; interrupts remain enabled.
+The native legacy TWI controller is not used. See [WIRE](WIRE.md) for the
+automatic-STOP constraint, API semantics, timing limits and validation boundaries.
+
+The SPI API is in core `SPI.h/.cpp`, using `src/hal/uc3b_spi.c` and its separate
+register adapter. It is a synchronous foreground master: PBA-derived divider,
+software LSB reversal, bounded polling, no new interrupt vector or DMA. Chip
+select belongs to the sketch; timing/USB interrupts remain available. The
+installer copies the shared HAL, and native tests replace only its register
+adapter. See [SPI](SPI.md) for the API and reference-board acceptance limits.
 
 The single linker now reserves the factory bootloader's first 8 KiB of flash
 and the first SRAM word. `_start` is the application entry at `0x80002000`.

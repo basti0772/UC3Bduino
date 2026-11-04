@@ -1,17 +1,14 @@
 /* SPDX-License-Identifier: MIT */
 #include <Arduino.h>
-#if !UC3BDUINO_TEST_PIN_CONFIGURED
-#error "Configure logical D0 from the real board schematic before building Blink"
-#endif
-const uint32_t TEST_PIN = D0; /* No assumed LED. */
 void setup()
 {
-    pinMode(TEST_PIN, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LED_BUILTIN_OFF);
 }
 void loop()
 {
-    digitalWrite(TEST_PIN, HIGH);
+    digitalWrite(LED_BUILTIN, LED_BUILTIN_ON);
     delay(500);
-    digitalWrite(TEST_PIN, LOW);
+    digitalWrite(LED_BUILTIN, LED_BUILTIN_OFF);
     delay(500);
 }

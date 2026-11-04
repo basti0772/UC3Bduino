@@ -10,21 +10,23 @@ param(
     [ValidateSet('Unconfirmed','AT32UC3B0256')]
     [string]$LegacyDevice = 'Unconfirmed',
     [ValidateSet('A', 'B')]
-    [string]$GpioPort,
+    [string]$GpioPort = 'A',
     [ValidateRange(0, 31)]
-    [int]$GpioPin,
+    [int]$GpioPin = 23,
     [ValidateSet('U0A', 'U0C', 'U1A', 'U1C', 'U2B', 'U2C')]
     [string]$SerialRoute,
     [ValidateSet(2, 4, 8, 16, 32, 64, 128, 256)]
     [int]$SerialRxBufferSize = 64,
     [ValidateRange(400000, 16000000)]
-    [int]$Osc0Hz,
+    [int]$Osc0Hz = 12000000,
     [ValidateSet('External', 'Crystal')]
-    [string]$Osc0Mode,
+    [string]$Osc0Mode = 'Crystal',
+    [switch]$InternalRc,
     [ValidateRange(1, 65535)]
     [int]$UsbVendorId,
     [ValidateRange(1, 65535)]
-    [int]$UsbProductId
+    [int]$UsbProductId,
+    [switch]$EnableLegacyAutoUpload
 )
 
 $ErrorActionPreference = 'Stop'

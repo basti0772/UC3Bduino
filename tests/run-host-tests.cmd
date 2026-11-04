@@ -29,4 +29,20 @@ for %%N in (0 1 2) do (
   if errorlevel 1 exit /b 1
 )
 call tests\run-usb-host-tests.cmd
+if errorlevel 1 exit /b 1
+cl /nologo /W4 /WX /TC /std:c11 tests\spi_hal_test.c /Fo.scratch\host-tests\spi_hal.obj /Fe.scratch\host-tests\spi_hal.exe
+if errorlevel 1 exit /b 1
+.scratch\host-tests\spi_hal.exe
+if errorlevel 1 exit /b 1
+cl /nologo /W4 /WX /EHsc /I src /I arduino\hardware\uc3bduino\avr32\cores\uc3bduino /I arduino\hardware\uc3bduino\avr32\variants\uc3b0256 tests\spi_api_test.cpp /Fo.scratch\host-tests\spi_api.obj /Fe.scratch\host-tests\spi_api.exe
+if errorlevel 1 exit /b 1
+.scratch\host-tests\spi_api.exe
+if errorlevel 1 exit /b 1
+cl /nologo /W4 /WX /TC /std:c11 tests\i2c_hal_test.c /Fo.scratch\host-tests\i2c_hal.obj /Fe.scratch\host-tests\i2c_hal.exe
+if errorlevel 1 exit /b 1
+.scratch\host-tests\i2c_hal.exe
+if errorlevel 1 exit /b 1
+cl /nologo /W4 /WX /EHsc /I src /I arduino\hardware\uc3bduino\avr32\cores\uc3bduino /I arduino\hardware\uc3bduino\avr32\variants\uc3b0256 tests\wire_api_test.cpp /Fo.scratch\host-tests\wire_api.obj /Fe.scratch\host-tests\wire_api.exe
+if errorlevel 1 exit /b 1
+.scratch\host-tests\wire_api.exe
 exit /b %errorlevel%

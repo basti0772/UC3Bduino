@@ -1,5 +1,100 @@
 # Test record
 
+## Stage 10 — Wire / software I2C master
+
+Executed **2026-10-31** on Windows with AVR32 GCC/G++ 4.3.2, Arduino CLI
+1.5.2-rc.1, MSVC and the AT32UC3B0256 revision I / 12 MHz reference board.
+Baseline Stage 9 is preserved in `fe9572b`; work is on `codex/stage-10-wire`.
+This implementation uses open-drain GPIO, **not the native TWI peripheral**.
+
+| Check | Result | Evidence / limits |
+| --- | --- | --- |
+| Native regression | PASS | 27 executables, including the actual software I2C bit engine and Wire API with mock adapters; `native-final.log` |
+| All Arduino examples | COMPILE PASS | 20 sketches from a fresh default-backend installation, ELF/HEX/BIN/SRAM validation; `regression.log`, `final-regression-build/` |
+| Auto-upload-enabled Wire examples | COMPILE PASS | All three Wire sketches from a separate fresh enabled installation; `build-final.log`, `build-final/` |
+| Bare-metal regression | COMPILE PASS | minimal, startup-check and gpio-toggle with artifact validation; `bare-regression.log` |
+| Packaging / installation | PASS | 42 checks including Wire source/example inclusion, reproducible archives and extracted installation; `packaging.log` |
+| Protected DFU / automatic host lifecycle | PASS | 51 DFU and 56 automatic-upload synthetic checks; `dfu-host.log`, `auto-host.log` |
+| Metadata / syntax / whitespace | PASS | 170 source manifest entries, PowerShell parser and git diff check |
+| Wire API smoke | HARDWARE PASS | Build `66ca6081-cc20-45d8-aebe-542ab671a505`: 43 cases, 0 failures; exact CDC identity in `hardware.log`, `hardware-cdc.log` |
+| Automatic upload into Wire smoke | HARDWARE PASS | CDC touch, protected DFU upload/readback and CDC return; `hardware.log` |
+| Direct automatic upload after Wire smoke | FAILED BEFORE TOUCH | COM5 open failed before reset/erase; `auto-regression.log` |
+| Factory-DFU recovery | HARDWARE PASS | Protected upload/readback and exact AutoFlashTest identity `529f16f3-9a30-4feb-8456-1deb92e8bc60` on COM6; `recovery.log`, `auto-regression/recovery-cdc.log` |
+| Automatic cycle after recovery | HARDWARE PASS | 1200-baud touch, DFU, protected upload/readback and exact new CDC identity `877a1dbb-543e-4b96-bd61-411d91d140da` on COM6; `auto-regression-retry.log`, `auto-regression-retry/cdc.log` |
+| External I2C bus / device | HARDWARE NOT TESTED | Owner confirmed no I2C wiring or pull-ups; no physical ACK, repeated START, bus rate, stretching or electrical timing claim |
+| Other MCU/clock variants | HARDWARE NOT TESTED | Only reference 0256 revision I / 12 MHz board exercised |
+
+Evidence paths above are relative to `.scratch/stage10`; local USB IDs and logs
+are excluded from the source archive. The runtime smoke initializes/releases
+PA09/PA10 and tests API/buffer/error behavior without sending START or accessing
+an I2C device. Final builds additionally include compile-time GPIO layout checks
+and integer `write()` overloads, covered by the final native suite; these additions
+were not separately flashed in the smoke run.
+
+The initial automatic regression encountered the previously observed Windows CDC
+open failure despite COM5 being listed and stopped before reset/erase. After the
+owner activated Factory-DFU, the prepared AutoFlashTest was loaded successfully.
+The application appeared as COM6 on a different USB topology. A fresh AutoFlashTest
+then completed the full automatic cycle without another manual DFU action.
+The final board runs build `877a1dbb-543e-4b96-bd61-411d91d140da` on COM6.
+Recovery and retry both verified BOOTPROT=3, protected the first 8 KiB and required
+flash readback. The factory bootloader was not replaced.
+
+This successful retry does not establish an I2C cause or resolve the intermittent
+CDC-open/USB cold-reconnect issue, especially across USB topologies. No cold-start
+or prolonged port-reopening test was performed. Native TWI offload and external
+I2C acceptance remain separate future work; see [WIRE](WIRE.md) for the supported
+subset, timing bounds and required wiring.
+
+## Stage 9 — SPI
+
+Executed **2026-10-30** on Windows with AVR32 GCC/G++ 4.3.2, Arduino CLI
+1.5.2-rc.1, MSVC and the AT32UC3B0256 revision I / 12 MHz reference board.
+Baseline Stage 8.9 is preserved in `41ca7e2`; work is on `codex/stage-09-spi`.
+
+| Check | Result | Evidence / limits |
+| --- | --- | --- |
+| Native regression | PASS | 25 executables: existing 23 plus real SPI HAL/API tests with mock adapters; `.scratch/stage09/native-final.log` |
+| All Arduino examples | COMPILE PASS | 17 sketches from a fresh default-backend installation, ELF/HEX/BIN/SRAM validation; `regression.log` and `final-regression-build/` |
+| Auto-upload-enabled SPI examples | COMPILE PASS | Both SPI sketches from a separate fresh enabled install; `build-final.log`, `build-final/` |
+| Bare-metal regression | COMPILE PASS | minimal, startup-check and gpio-toggle; artifact validation; `bare-regression.log` |
+| Packaging / installation | PASS | 40 checks including SPI core/example inclusion, reproducible archives, hashes, extracted install; `packaging.log` |
+| Protected DFU / automatic host lifecycle | PASS | 51 DFU and 56 auto-upload synthetic checks; `dfu-host.log`, `auto-host.log` |
+| Metadata / syntax / whitespace | PASS | 156 source manifest entries, PowerShell parser, git diff check |
+| Internal SPI loopback | HARDWARE PASS | Final build `03188aa4-236b-4359-9069-6821b626ef75`: 25 cases, 0 failures; `hardware-final.log` and `hardware-final-cdc.log` |
+| Automatic upload after SPI | HARDWARE PASS | From final loopback firmware to new AutoFlashTest build `1b449fd8-275b-4c94-9e4b-957b7116ac7e`, protected readback and exact CDC identity; `auto-regression.log`, `auto-regression/cdc.log` |
+| External SPI bus / slave | HARDWARE NOT TESTED | Owner reported no connected SPI device/jumper; no signal timing, external bit-order, voltage or device protocol claim |
+| Other MCU/clock variants | HARDWARE NOT TESTED | Only reference 0256 revision I / 12 MHz board exercised |
+| UART / ADC hardware, IDE GUI | HARDWARE NOT TESTED | No new claims; earlier USB cold-reconnect descriptor failure remains unresolved |
+
+Paths in the evidence column are relative to `.scratch/stage09`; private local
+USB identity and logs are not included in the archive. The final board runs the
+new AutoFlashTest on COM5 and remains available for automatic upload. The
+bootloader was not replaced and every upload checked BOOTPROT=3 and protected
+application boundaries before erasing/programming.
+
+The SPI suite runs as part of `tests/run-host-tests.cmd` in an MSVC Native Tools
+prompt, including CI. `tests/test_packaging.ps1` checks the installer/archive.
+`tests/verify_firmware.py <build-directory> --basename <sketch>.ino` checks each
+real Arduino artifact. The final hardware commands reused the existing uploader:
+
+```powershell
+. ./scripts/dfu-common.ps1
+. ./tools/auto-upload-common.ps1
+$application = Invoke-AutoUpload `
+  -Firmware .scratch/stage09/build-final/SPILoopback/SPILoopback.ino.hex `
+  -Port COM5 -LegacyDevice AT32UC3B0256 `
+  -ToolPath .scratch/stage05/dfu-programmer-1.1.0/dfu-programmer.exe
+# The local hardware-final.ps1 harness then reads CDC at 115200 with DTR high,
+# requiring the exact new GUID followed by Cases: 25, Failures: 0, RESULT: PASS.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Test-AutoUpload.ps1 `
+  -ConfigFile .scratch/stage09/cli.yaml -Port COM5 `
+  -LegacyDevice AT32UC3B0256 -OutputDirectory .scratch/stage09/auto-regression
+```
+
+See [SPI](SPI.md) for pin mapping, API behavior, error recovery and acceptance
+limits. These results do not close the separate Stage 8.5 public-release gate.
+
 ## Stage 8 – ADC / analogRead
 
 Executed **2026-10-28**, Windows 11, PowerShell 5.1, AVR32 GCC/G++ 4.3.2,

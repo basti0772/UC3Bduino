@@ -7,8 +7,8 @@ Set-StrictMode -Version Latest
 try {
     $root = Split-Path -Parent $PSScriptRoot
     $version = [IO.File]::ReadAllText((Join-Path $root 'VERSION')).Trim()
-    if ($version -cnotmatch '^0\.[0-9]+\.[0-9]+-dev$') {
-        throw 'This packager prepares 0.x.y-dev archives only. Stable releases require the documented hardware/release review.'
+    if ($version -cnotmatch '^0\.[0-9]+\.[0-9]+-(dev|rc[1-9][0-9]*)$') {
+        throw 'This packager prepares development and RC source archives only. Stable releases require the documented hardware/release review.'
     }
     $platform = [IO.File]::ReadAllText((Join-Path $root 'arduino/hardware/uc3bduino/avr32/platform.txt'))
     if ($platform -notmatch ('(?m)^version=' + [regex]::Escape($version) + '\r?$')) { throw 'VERSION and platform.txt disagree.' }

@@ -1,0 +1,31 @@
+{
+  "packages": [
+    {
+      "name": "uc3bduino",
+      "maintainer": "UC3Bduino contributors",
+      "websiteURL": "https://github.com/basti0772/UC3Bduino",
+      "help": {
+        "online": "https://github.com/basti0772/UC3Bduino/issues"
+      },
+      "platforms": [
+        {
+          "name": "UC3Bduino",
+          "architecture": "avr32",
+          "version": "0.9.0-rc1",
+          "category": "Contributed",
+          "url": "https://github.com/basti0772/UC3Bduino/releases/download/v0.9.0-rc1/uc3bduino-avr32-0.9.0-rc1.zip",
+          "archiveFileName": "uc3bduino-avr32-0.9.0-rc1.zip",
+          "size": "286539",
+          "checksum": "SHA-256:a4d9a15931e939381559ce387c5f53d064fe77acbf26d6a2ae714a8e3b2d98b8",
+          "boards": [
+            {
+              "name": "UC3Bduino AT32UC3B0256"
+            }
+          ],
+          "toolsDependencies": []
+        }
+      ],
+      "tools": []
+    }
+  ]
+}

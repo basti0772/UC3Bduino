@@ -18,5 +18,6 @@ try {
     Invoke-DfuUpload -Firmware $Firmware -ToolPath $ToolPath -LegacyDevice $LegacyDevice -CheckOnly:$CheckOnly -ProbeOnly:$ProbeOnly
 } catch {
     Write-Error -ErrorAction Continue "UC3Bduino upload failed: $($_.Exception.Message)"
+    if ($_.Exception.Data.Contains('ExitCode')) { exit [int]$_.Exception.Data['ExitCode'] }
     exit 1
 }

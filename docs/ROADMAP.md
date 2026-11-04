@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current: Stage 8 – ADC / analogRead (0.8.0-dev)**
+**Current: Stage 10 – Wire / software I2C master (0.9.0-dev)**
 
 Each stage should have its own review and validation. A checked build is not a
 claim of working peripherals or Arduino compatibility.
@@ -39,8 +39,15 @@ claim of working peripherals or Arduino compatibility.
 8. **ADC / analogRead** — lazy ADC HAL, native 10-bit reads, verified A0–A7,
    bounded waits, examples and host/build checks. External ADVREF; physical
    accuracy/settling still untested. See [ADC](ADC.md).
-9. **SPI** — SPI.begin, transactions and transfers.
-10. **Wire / I2C** — master bus API.
+   **Stage 8.9 – Automatic USB reboot/upload** — repeated reference-board cycles
+   and Arduino CLI upload passed; opt-in GP31/watchdog path preserves factory DFU.
+   See [AUTO_UPLOAD](AUTO_UPLOAD.md).
+9. **SPI** — master begin/end, foreground transactions, four modes, both bit orders,
+   byte/word/buffer transfers, bounded failures. Internal reference-board loopback
+   passed; external bus/slave operation untested. See [SPI](SPI.md).
+10. **Wire / I2C** — foreground GPIO software master, 32-byte buffers, real probes,
+    repeated START, clock stretching and bounded waits. External bus untested;
+    native TWI offload remains deferred. See [WIRE](WIRE.md).
 11. **PWM / analogWrite** — verified timer/output mapping.
 12. **External interrupts / attachInterrupt** — application interrupt API.
 13. **EEPROM / persistent storage** — storage strategy with flash protections.

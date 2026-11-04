@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.9.0-rc1 — Arduino Boards Manager release candidate
+
+- Windows x64 package for the 12 MHz reference board, external compiler setup and verified dfu-programmer download. The IDE offers explicit legacy DFU target confirmation.
+
+- Stage 10: foreground Wire master using GPIO software I2C, external pull-ups,
+  address/data NACK reporting, real repeated START, 32-byte buffers and bounded
+  stretching/timeouts. Adds SDA=PA10/SCL=PA09 without renumbering existing pins.
+  Native TWI offload and external I2C device validation remain unimplemented/untested.
+- Stage 9: original SPI master HAL and Arduino SPI API, PBA-derived clock,
+  modes 0–3, software LSB-first, byte/word/buffer transfers and bounded waits.
+  Adds MOSI/MISO/SCK/SS logical pins without renumbering existing pins.
+  SPILoopback passed 25 internal hardware cases; external SPI devices untested.
+- Stage 8.5 reference fixes: 12 MHz crystal default, PA23 active-low LED, native
+  DFU location discovery, and advancing USB FIFO byte accesses. Physical Blink,
+  protected DFU flash/readback, CDC enumeration and TX passed on AT32UC3B0256.
+- Stage 8.9: optional 1200-baud/DTR touch, acknowledged close and bounded delay,
+  watchdog reset, and separately gated legacy factory DFU GP31 entry. This backend
+  is off by default and requires accepting nonvolatile ISP_FORCE recovery state.
+- AutoUpload and unique-build Test-AutoUpload scripts reuse the protected DFU
+  uploader, with physical USB location matching, bounded waits, firmware file
+  locking and native error propagation. Opt-in Arduino upload recipe included.
+- Portable touch/boot safety and host lifecycle tests added. Repeated automatic
+  hardware cycles passed on the AT32UC3B0256 revision I / 12 MHz reference board.
+  Repeated Windows 1200-baud settings preserve the acknowledged reset countdown.
+  Cold-reconnect behavior remains unresolved.
+
 ## 0.8.0-dev — unreleased development snapshot
 
 - Stage 8: lazy, blocking 10-bit ADC HAL and `analogRead(A0..A7)`, with

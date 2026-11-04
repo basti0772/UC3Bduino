@@ -1,21 +1,29 @@
 # UC3Bduino
 
-**Stage 8 – ADC / analogRead · 0.8.0-dev — Experimental / Development.** Arduino-compatible core for
+**UC3Bduino 0.9.0-rc1 for Arduino IDE 2.x on Windows x64.** Arduino-compatible core for
 **AT32UC3B0256**. Stable FQBN: **`uc3bduino:avr32:uc3b0256`**.
-Firmware builds and host tests pass; physical DFU upload, USB CDC enumeration
-and Arduino IDE GUI operation remain unverified. Preserve the factory DFU bootloader.
+Physical DFU upload, red LED blinking, USB CDC enumeration and CDC transmission
+have passed on the AT32UC3B0256 / 12 MHz reference board. Repeated automatic
+upload cycles passed on revision I; Arduino IDE GUI acceptance remains pending.
+SPI internal loopback passed; external SPI devices remain untested.
+Wire provides a GPIO software master; external I²C communication is untested.
+Preserve the factory DFU bootloader.
 
-## Quick Start
+## Install the release candidate
+
+Follow the [Windows Boards Manager guide](docs/INSTALL_ARDUINO_WINDOWS.md).
+The Windows setup helper installs dfu-programmer 1.1.0. AVR32 GCC is a separate prerequisite.
+
+## Install from a development checkout
 
 1. Install Arduino IDE 2.x/CLI and the legacy AVR32 toolchain; set
    `AVR32_TOOLCHAIN_PATH` to its root or bin. [Windows setup](docs/INSTALL_WINDOWS.md)
    provides exact downloads, checksums, driver and hardware requirements.
 2. Optionally run `.\scripts\get-dfu-tool.ps1` to fetch and verify dfu-programmer
    1.1.0, then set `UC3B_DFU_TOOL_PATH` to the printed executable directory.
-3. Run `.\scripts\install.ps1 -GpioPort A -GpioPin 3`, **replacing PA03 with a
-   safe verified output from your board schematic**. The script detects the
-   sketchbook; use `-SketchbookPath` to override it. For an unconfigured compile
-   check, omit both GPIO options and use ArduinoMinimal. Existing installs are
+3. Run `.\scripts\install.ps1`. The reference profile uses a 12 MHz crystal and
+   D0/LED_BUILTIN on PA23, active low. The script detects the sketchbook; use
+   `-SketchbookPath` to override it. Existing installs are
    preserved, not overwritten.
 4. Restart IDE, select **UC3Bduino AT32UC3B0256**, open **File > Examples >
    UC3BduinoExamples > Blink**, then Verify. `.\scripts\diagnose.ps1` and
@@ -27,9 +35,10 @@ and Arduino IDE GUI operation remain unverified. Preserve the factory DFU bootlo
    using the [USB configuration](docs/USB_CDC.md). Upload from DFU, select the
    application's CDC COM port and open Serial Monitor.
 
-No onboard LED, full board pinout, oscillator or USB ID allocation is assumed.
+The reference board profile is documented in [BOARD_REFERENCE](docs/BOARD_REFERENCE.md).
+USB ID allocation must be supplied locally by the developer.
 Default USB IDs are zero, so SerialUSB stays detached until configured.
-**Boards Manager is not available yet**; the source ZIP uses the same installer.
+The source ZIP also supports the sketchbook installer.
 See [packaging/version policy](docs/PACKAGING.md), [changelog](CHANGELOG.md),
 [troubleshooting](docs/TROUBLESHOOTING.md) and [hardware checklist](docs/HARDWARE_TEST.md).
 
@@ -38,11 +47,38 @@ See [packaging/version policy](docs/PACKAGING.md), [changelog](CHANGELOG.md),
 | GPIO | Implemented; explicit D0 mapping, build/host checks |
 | millis/micros/delay/delayMicroseconds | Implemented; build/host checks |
 | HardwareSerial / Print | Implemented; explicit UART/clock, build/host checks |
-| Factory DFU upload | Implemented wrapper; mock transport tested, physical upload pending |
-| USB CDC / SerialUSB | Implemented; build/protocol host tests, hardware enumeration pending |
+| Factory DFU upload | Protected upload/readback verified on reference hardware |
+| USB CDC / SerialUSB | Enumeration and TX verified on reference hardware |
+| Automatic USB upload | Opt-in 1200-baud touch / watchdog / legacy GP31; repeated reference-board cycles passed |
 | analogRead(A0..A7) | Implemented; native 10 bits, build/host checks; hardware pending |
 | analogReference / analogReadResolution | Not supported; external ADVREF, fixed 10-bit API |
-| SPI, I2C/Wire, PWM | Not implemented |
+| SPI master | Modes 0–3, transactions, byte/word/buffer transfers; internal HW loopback passed, external bus untested |
+| Wire / I²C | Software GPIO master, 32-byte buffers, repeated START, bounded waits; external bus untested |
+| PWM | Not implemented |
+
+## Automatic USB upload
+
+The opt-in Stage 8.9 path uses 1200-baud CDC plus a DTR falling edge, then a
+watchdog reset into existing factory DFU. **Factory 1.0.2 requires nonvolatile
+ISP_FORCE (GP31)**; after a failed upload it intentionally remains in DFU until
+a successful launch. The default installation leaves this backend disabled.
+See [setup, scripts, Arduino integration and recovery](docs/AUTO_UPLOAD.md).
+
+## SPI
+
+`#include <SPI.h>` provides `SPI.begin()`, `beginTransaction(SPISettings(...))`,
+`transfer()`, `transfer16()` and `endTransaction()`. MOSI=PA14, MISO=PA25,
+SCK=PA15; chip select is sketch-controlled GPIO (SS=PA16). The default 12 MHz
+profile supports calculated SPI clocks up to 6 MHz. Use the SPILoopback or
+SPIMaster examples and read [SPI setup, limits and tests](docs/SPI.md) first.
+Foreground only; external wiring and slave devices are not hardware-validated.
+
+## Wire / software I²C
+
+For `Wire.begin()`, buffered writes, reads and repeated STARTs, see
+[Wire / software I²C](docs/WIRE.md). SDA=PA10, SCL=PA09, external pull-ups required.
+This initial implementation uses GPIO, not the native TWI controller. The
+requested 1–100 kHz rate is an upper bound; no slave/ISR/400 kHz mode is provided.
 
 ## ADC Quick Start
 
@@ -59,7 +95,7 @@ void loop() {
 }
 ```
 
-SerialUSB needs the clock/VID/PID setup above and is not hardware-tested yet.
+SerialUSB needs the clock/VID/PID setup above; enumeration and TX passed on the reference board.
 Both ADC examples support HardwareSerial: set `ADC_USE_USB` to `0`, configure
 the [UART route and oscillator](docs/SERIAL.md), and use 115200 baud.
 See [ADC reference, pin mapping, timing and potentiometer test](docs/ADC.md).
@@ -244,12 +280,15 @@ See [versions, hashes and retained notices](docs/THIRD_PARTY.md).
 - Serial supports one selected USART, 8N1, polling TX and 63 usable RX bytes
   by default. Pin/clock configuration is required; RX service latency is unmeasured.
   Print supports decimal integers/text, with no full Stream/virtual Print ABI.
-- USB is a single CDC function with bounded buffering and no automatic DFU reset.
-  Physical enumeration, throughput, interrupt latency and suspend current need
-  board validation. USB VID/PID must be configured by the developer.
+- USB is a single CDC function with bounded buffering and optional automatic DFU
+  reset. Reference-board enumeration and TX passed; throughput, interrupt latency
+  and suspend current are unmeasured. An earlier cold-reconnect descriptor failure
+  remains unresolved. USB VID/PID must be configured by the developer.
 - ADC uses external ADVREF, sequential blocking conversions and foreground ownership.
   Physical accuracy and channel settling remain untested; failures return -1.
-- No SPI, Wire, PWM, external-interrupt API or Boards Manager distribution.
+- SPI is a polling master with software chip select; no slave/DMA/ISR API.
+  Wire is a foreground software master with no external bus hardware validation.
+  PWM and an external-interrupt API are future stages.
   Stage 7 supplies the local installer and development source archive.
 
 See [ROADMAP](docs/ROADMAP.md), [ARCHITECTURE](docs/ARCHITECTURE.md), and

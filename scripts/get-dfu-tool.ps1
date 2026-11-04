@@ -21,11 +21,16 @@ try {
         } finally { [Net.ServicePointManager]::SecurityProtocol = $oldTls }
         Write-Host "Downloaded archive retained at $ArchivePath"
     }
+    $hash = [Security.Cryptography.SHA256]::Create()
+    $inputFile = [IO.File]::OpenRead($ArchivePath)
+    try { $actualHash = [BitConverter]::ToString($hash.ComputeHash($inputFile)).Replace('-', '').ToLowerInvariant() }
+    finally { $inputFile.Dispose(); $hash.Dispose() }
     if ((Get-Item -LiteralPath $ArchivePath).Length -ne 423421 -or
-        (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha256) {
+        $actualHash -ne $sha256) {
         throw 'DFU archive size/SHA-256 mismatch. Nothing extracted; do not execute the download.'
     }
-    Expand-Archive -LiteralPath $ArchivePath -DestinationPath $destinationPath
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::ExtractToDirectory($ArchivePath, $destinationPath)
     $tools = @(Get-ChildItem -LiteralPath $destinationPath -Filter dfu-programmer.exe -Recurse -File)
     if ($tools.Count -ne 1) { throw 'Unexpected upstream ZIP layout; executable not uniquely identified.' }
     Write-Host 'Verified upstream distribution extracted, including DLLs and licenses. No executable was run.'

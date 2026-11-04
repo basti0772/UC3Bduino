@@ -10,6 +10,15 @@ references in [HARDWARE](HARDWARE.md); vendor documents are linked, not bundled.
 
 ## External tools and reviewed headers
 
+Stage 10 Wire is original MIT code based on the MCU GPIO documentation and the
+I2C protocol. Arduino API names were consulted without importing Wire code.
+NXP UM10204 and the UC3B TWI restrictions are linked in [WIRE](WIRE.md#references).
+
+Stage 9 SPI is original MIT code based on datasheet 32059L and the already
+installed `spi_199.h` register definitions. Arduino's SPI header was consulted
+only for public signatures/constants and feature-macro semantics, not copied.
+No ASF SPI implementation was imported. See [SPI references](SPI.md#references).
+
 Stage 6 is an original implementation based on the hardware and USB protocol
 documents linked in [USB_CDC](USB_CDC.md). No ASF code was imported. Before
 using ASF as a technical reference, the following files were inspected at

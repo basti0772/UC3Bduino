@@ -118,7 +118,9 @@ function Invoke-DfuCommand([string]$Tool, [string[]]$Arguments) {
         }
         $output = $stdout.Result + $stderr.Result
         if ($process.ExitCode -ne 0) {
-            throw "dfu-programmer $($Arguments -join ' ') failed (exit $($process.ExitCode)): $($output.Trim())"
+            $failure = New-Object Exception("dfu-programmer $($Arguments -join ' ') failed (exit $($process.ExitCode)): $($output.Trim())")
+            $failure.Data['ExitCode'] = $process.ExitCode
+            throw $failure
         }
         return $output
     } finally { $process.Dispose() }
@@ -143,16 +145,28 @@ function Get-DfuValue([string]$Output) {
     return $value
 }
 
-function Get-DfuTarget([string]$Tool, [string]$LegacyDevice) {
-    $deviceId = Get-DfuDeviceId
-    # Debug output supplies libusb's bus/address; subsequent calls are pinned
-    # to that address, never an unqualified first-match device.
-    $probe = Invoke-DfuCommand $Tool @('at32uc3b0256','get','manufacturer','--debug','10')
-    $locations = [regex]::Matches($probe, 'found device at USB:([0-9]+),([0-9]+)')
-    if ($locations.Count -ne 1 -or [int]$locations[0].Groups[1].Value -eq 0) {
+function Get-DfuUsbDevices([string]$Tool) {
+    $library = Join-Path (Split-Path -Parent $Tool) 'libusb-1.0.dll'
+    if (-not (Test-Path -LiteralPath $library -PathType Leaf)) { throw "Missing programmer dependency: $library" }
+    if (-not ('Uc3DfuUsbLocator' -as [type])) { Add-Type -Path (Join-Path $PSScriptRoot 'dfu-usb.cs') }
+    [Uc3DfuUsbLocator]::Find([IO.Path]::GetFullPath($library))
+}
+
+function Get-DfuPinnedTarget([string]$Tool) {
+    # Windows release builds omit the upstream DEBUG bus/address line. Ask the
+    # programmer's own libusb DLL instead; enumeration does not open a device.
+    $locations = @(Get-DfuUsbDevices $Tool)
+    if ($locations.Count -ne 1 -or $locations[0].Bus -lt 1 -or $locations[0].Bus -gt 255 -or
+        $locations[0].Address -lt 1 -or $locations[0].Address -gt 127) {
         throw 'Could not uniquely resolve the DFU USB bus/address. Check WinUSB driver and dfu-programmer 1.1.0.'
     }
-    $target = 'at32uc3b0256:{0},{1}' -f $locations[0].Groups[1].Value,$locations[0].Groups[2].Value
+    return 'at32uc3b0256:{0},{1}' -f $locations[0].Bus,$locations[0].Address
+}
+
+function Get-DfuTarget([string]$Tool, [string]$LegacyDevice) {
+    $deviceId = Get-DfuDeviceId
+    $target = Get-DfuPinnedTarget $Tool
+    $probe = Invoke-DfuCommand $Tool @($target,'get','manufacturer')
     $manufacturer = Get-DfuValue $probe
     $family = Get-DfuValue (Invoke-DfuCommand $Tool @($target,'get','family'))
     $product = Get-DfuValue (Invoke-DfuCommand $Tool @($target,'get','product-name'))
@@ -168,12 +182,12 @@ function Get-DfuTarget([string]$Tool, [string]$LegacyDevice) {
     }
     $protection = Get-DfuValue (Invoke-DfuCommand $Tool @($target,'getfuse','BOOTPROT'))
     if ($protection -ne 3) { throw "Unsafe/incompatible BOOTPROT=$protection. Required: 3 (8 KiB). Fuses will not be changed." }
-    if ((Get-DfuDeviceId) -ne $deviceId) { throw 'DFU device changed during detection. Aborting.' }
+    if ((Get-DfuDeviceId) -ne $deviceId -or (Get-DfuPinnedTarget $Tool) -ne $target) { throw 'DFU device changed during detection. Aborting.' }
     Write-Host ('DFU target {0}; signature {1:X2}/{2:X2}/{3:X2}/{4:X2}; bootloader 0x{5:X2}; BOOTPROT=3.' -f $target,$manufacturer,$family,$product,$revision,$boot)
     return @{ Target = $target; DeviceId = $deviceId }
 }
 
-function Invoke-DfuUpload([string]$Firmware, [string]$ToolPath, [string]$LegacyDevice, [switch]$CheckOnly, [switch]$ProbeOnly) {
+function Invoke-DfuUpload([string]$Firmware, [string]$ToolPath, [string]$LegacyDevice, [switch]$CheckOnly, [switch]$ProbeOnly, [hashtable]$ExpectedTarget) {
     $tool = Resolve-DfuTool $ToolPath
     $version = Invoke-DfuCommand $tool @('--version')
     if ($version.Trim() -cne 'dfu-programmer 1.1.0') { throw "Unsupported upload tool version: $($version.Trim()). Install dfu-programmer 1.1.0." }
@@ -197,14 +211,21 @@ function Invoke-DfuUpload([string]$Firmware, [string]$ToolPath, [string]$LegacyD
         }
         if ($CheckOnly) { Write-Host 'CHECK ONLY: no USB commands were sent.'; return }
         $device = Get-DfuTarget $tool $LegacyDevice
+        if ($ExpectedTarget -and ($device.DeviceId -ne $ExpectedTarget.DeviceId -or $device.Target -ne $ExpectedTarget.Target)) {
+            throw 'DFU target changed after automatic reboot detection. No erase performed.'
+        }
         if ($ProbeOnly) { Write-Host 'PROBE ONLY: no erase, flash, or launch requested. Bootloader commands may set ISP_FORCE; see DFU_UPLOAD.md.'; return }
         foreach ($step in @('erase','flash','launch')) {
-            if ((Get-DfuDeviceId) -ne $device.DeviceId) { throw 'DFU device changed/disconnected. No later upload step will run.' }
+            if ((Get-DfuDeviceId) -ne $device.DeviceId -or (Get-DfuPinnedTarget $tool) -ne $device.Target) { throw 'DFU device changed/disconnected. No later upload step will run.' }
             $commandArgs = @($device.Target,$step)
             if ($step -eq 'flash') { $commandArgs += $Firmware }
             Write-Host "DFU $step$(if ($step -eq 'flash') { ' with mandatory readback verification' })..."
             try { Write-Host (Invoke-DfuCommand $tool $commandArgs).Trim() }
-            catch { throw "DFU $step failed. No later upload step will run. $($_.Exception.Message)" }
+            catch {
+                $failure = New-Object Exception("DFU $step failed. No later upload step will run. $($_.Exception.Message)", $_.Exception)
+                if ($_.Exception.Data.Contains('ExitCode')) { $failure.Data['ExitCode'] = $_.Exception.Data['ExitCode'] }
+                throw $failure
+            }
         }
         Write-Host 'Upload and readback verification succeeded; application reset/start requested.'
     } finally {

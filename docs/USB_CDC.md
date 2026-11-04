@@ -135,7 +135,8 @@ Seven line-coding bytes are stored in USB byte order (AVR32 is big-endian);
 default 115200 8N1. Stop/parity/data-bit encodings are validated. Baud is metadata
 and does not change USB, CPU or UART speed. DTR/RTS are retained; SERIAL_STATE
 reports virtual DSR/DCD following DTR. SEND_BREAK and communication-feature
-requests are not advertised and stall. No UART bridge or 1200-baud reset.
+requests are not advertised and stall. No UART bridge. The optional Stage 8.9
+[1200-baud reboot backend](AUTO_UPLOAD.md) is disabled by default.
 
 ## SerialUSB and buffers
 
@@ -199,8 +200,10 @@ examples print nothing. Blink never waits for USB, Hello's initial wait is at
 most 3 seconds, and greetings repeat for late-opened monitors. Echo keeps the
 next RX byte if TX is full. Test binary traffic with a host program too.
 
-Uploading again requires manual DFU entry. Closing at 1200 baud does not reset
-the board. `Serial` and `SerialUSB` remain independent objects.
+The default installation requires manual DFU entry. The explicit
+`-EnableLegacyAutoUpload` installation adds 1200-baud/DTR reboot on the verified
+factory 1.0.2 reference board; see [Automatic USB upload](AUTO_UPLOAD.md) for the
+GP31 exception and recovery behavior. `Serial` and `SerialUSB` remain independent.
 
 ## Debugging and hardware acceptance
 

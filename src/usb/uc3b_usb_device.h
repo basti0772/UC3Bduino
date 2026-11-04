@@ -9,6 +9,7 @@
  */
 bool usb_hw_start(void);
 void usb_hw_stop(void);
+void usb_hw_request_bootloader(void);
 bool usb_hw_configure_data(bool enable);
 void usb_hw_set_address(uint8_t address);
 void usb_hw_control_stall(void);

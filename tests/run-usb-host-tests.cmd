@@ -2,6 +2,20 @@
 rem SPDX-License-Identifier: MIT
 rem Run from repository root in a Visual Studio x64 Native Tools prompt.
 if not exist .scratch\usb-tests mkdir .scratch\usb-tests
+for %%E in (0 1) do (
+  cl /nologo /W4 /WX /TC /std:c11 /DUC3BDUINO_USB_AUTO_UPLOAD=%%E tests\usb_boot_touch_test.c /Fo.scratch\usb-tests\touch%%E.obj /Fe.scratch\usb-tests\touch%%E.exe
+  if errorlevel 1 exit /b 1
+  .scratch\usb-tests\touch%%E.exe
+  if errorlevel 1 exit /b 1
+  cl /nologo /W4 /WX /wd4505 /TC /std:c11 /DUC3BDUINO_FACTORY_DFU_GP31=%%E tests\bootloader_test.c /Fo.scratch\usb-tests\boot%%E.obj /Fe.scratch\usb-tests\boot%%E.exe
+  if errorlevel 1 exit /b 1
+  .scratch\usb-tests\boot%%E.exe
+  if errorlevel 1 exit /b 1
+)
+cl /nologo /W4 /WX /TC /std:c11 tests\usb_fifo_test.c /Fo.scratch\usb-tests\fifo.obj /Fe.scratch\usb-tests\fifo.exe
+if errorlevel 1 exit /b 1
+.scratch\usb-tests\fifo.exe
+if errorlevel 1 exit /b 1
 cl /nologo /W4 /WX /TC /std:c11 tests\usb_protocol_test.c /Fo.scratch\usb-tests\protocol.obj /Fe.scratch\usb-tests\protocol.exe
 if errorlevel 1 exit /b 1
 .scratch\usb-tests\protocol.exe

@@ -3,6 +3,7 @@
 #include "usb_device_core.h"
 #include "uc3b_usb_device.h"
 #include "usb_config.h"
+#include "usb_boot_touch.h"
 
 static uint8_t rx[USB_SERIAL_RX_BUFFER_SIZE], tx[USB_SERIAL_TX_BUFFER_SIZE];
 static uint16_t rx_head, rx_tail, tx_head, tx_tail, control_lines;
@@ -15,6 +16,7 @@ static bool ready(void) { return usb_device_configured() && (control_lines & 1) 
 
 void usb_cdc_reset(void)
 {
+    usb_boot_touch_reset();
     rx_head = rx_tail = tx_head = tx_tail = control_lines = 0;
     tx_busy = tx_zlp = notify_busy = false;
     notify_dirty = true;
@@ -27,6 +29,7 @@ void usb_cdc_end(void) { if (usb_hw_foreground()) { usb_device_end(); } }
 
 void usb_cdc_control_lines(uint16_t value)
 {
+    usb_boot_touch_lines(control_lines, value);
     if ((control_lines ^ value) & 1) { notify_dirty = true; }
     control_lines = value; /* DTR and RTS retained; native CDC has no UART pins. */
 }
@@ -45,6 +48,8 @@ void usb_cdc_get_line_coding(uint8_t data[7])
 void usb_cdc_set_line_coding(const uint8_t data[7])
 {
     uint8_t i;
+    usb_boot_touch_baud((uint32_t)data[0] | ((uint32_t)data[1] << 8)
+        | ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24));
     for (i = 0; i < 7; ++i) { line_coding[i] = data[i]; }
 }
 
@@ -76,6 +81,7 @@ void usb_cdc_sof(void)
 {
     uint8_t notification[10] = { 0xa1, 0x20, 0, 0, USB_CDC_COMM_INTERFACE, 0, 2, 0, 0, 0 };
     if (!usb_device_configured()) { return; }
+    if (usb_boot_touch_frame()) { usb_hw_request_bootloader(); return; }
     /* Native-port policy: report DSR/DCD while host asserts DTR; no fictitious
      * UART error/break indications. Only send on a state change or config/reset.
      */

@@ -6,6 +6,7 @@
 #include "uc3b_usb_device.h"
 #include "usb_cdc.h"
 #include "usb_config.h"
+#include "usb_boot_touch.h"
 
 #define LO(v) ((v) & 255)
 #define HI(v) (((v) >> 8) & 255)
@@ -116,6 +117,7 @@ void usb_device_setup(const uint8_t setup[8])
 {
     uint8_t type = setup[0], request = setup[1];
     uint16_t value = le16(setup + 2), index = le16(setup + 4), length = le16(setup + 6);
+    usb_boot_touch_setup();
     /* SETUP aborts the previous transfer, including an unacknowledged status.
      * Hardware has already cleared EP0 STALL and reset its data sequence.
      */
@@ -212,6 +214,7 @@ void usb_device_control_in_ready(void)
     } else if (state == STATUS_IN) {
         if (!status_sent) { usb_hw_control_send(0, 0); status_sent = true; }
         else {
+            usb_boot_touch_status_complete();
             if (pending == ADDRESS) {
                 address = (uint8_t)pending_value;
                 usb_hw_set_address(address); /* After host ACK, two separate writes. */
@@ -229,7 +232,11 @@ void usb_device_reset(void)
     usb_cdc_reset();
 }
 
-void usb_device_suspend(bool value) { suspended = value; }
+void usb_device_suspend(bool value)
+{
+    suspended = value;
+    if (value) { usb_boot_touch_reset(); }
+}
 bool usb_device_configured(void) { return configuration != 0 && !suspended; }
 
 bool usb_device_begin(void)

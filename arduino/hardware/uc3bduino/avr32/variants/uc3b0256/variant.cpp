@@ -14,7 +14,10 @@ const Uc3bPinDescription uc3b_pin_map[NUM_DIGITAL_PINS] = {
     PIN(255, 255), /* Unconfigured: HAL rejects it without touching registers. */
 #endif
     PIN(0, 3), PIN(0, 4), PIN(0, 5), PIN(0, 6),
-    PIN(0, 7), PIN(0, 8), PIN(0, 30), PIN(0, 31)
+    PIN(0, 7), PIN(0, 8), PIN(0, 30), PIN(0, 31),
+    PIN(0, 23), /* LED_BUILTIN: schematic D1, red, active low. */
+    PIN(0, 14), PIN(0, 25), PIN(0, 15), PIN(0, 16), /* MOSI, MISO, SCK, SS */
+    PIN(0, 10), PIN(0, 9) /* SDA, SCL: open-drain GPIO software master. */
 };
 #undef PIN
 #undef ADC_CHANNEL

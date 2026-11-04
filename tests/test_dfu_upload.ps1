@@ -66,6 +66,16 @@ $script:pnp = @([pscustomobject]@{InstanceId='USB\VID_03EB&PID_2FF6\A'})
 
 # Native executable fixture exercises actual argument quoting, stderr, exit
 # handling and file sharing. Its protocol output is synthetic, not hardware.
+Add-Type -Path (Join-Path $PSScriptRoot '../scripts/dfu-usb.cs') # Compile only; no native calls.
+$script:usbLocations = @([pscustomobject]@{Bus=1;Address=9})
+function Get-DfuUsbDevices([string]$Tool) { $script:usbLocations }
+foreach ($locations in @(@(), @([pscustomobject]@{Bus=0;Address=9}),
+    @([pscustomobject]@{Bus=1;Address=0}),
+    @([pscustomobject]@{Bus=1;Address=9},[pscustomobject]@{Bus=1;Address=10}))) {
+    $script:usbLocations = $locations
+    Expect-Failure { Get-DfuPinnedTarget 'fake programmer.exe' } 'uniquely resolve'
+}
+$script:usbLocations = @([pscustomobject]@{Bus=1;Address=9})
 $fixtureDir = Join-Path ([IO.Path]::GetTempPath()) ('uc3b-dfu-tests-' + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $fixtureDir | Out-Null
 $fixture = Join-Path $fixtureDir 'fake programmer.exe'
@@ -89,7 +99,7 @@ public class DfuFixture {
             int v = 0;
             bool legacy = mode == "legacy";
             switch (a[2]) {
-                case "manufacturer": v = legacy ? 0x58 : 0x1f; Console.Error.WriteLine("dfu.c: found device at USB:1,9"); break;
+                case "manufacturer": v = legacy ? 0x58 : 0x1f; break; // Real Windows build has no DEBUG location line.
                 case "family": v = legacy ? 0x20 : 0x1e; break;
                 case "product-name": v = legacy ? 2 : (mode == "wrong-chip" ? 0xe5 : 0xe4); break;
                 case "product-revision": v = 5; break;
@@ -140,7 +150,15 @@ public class DfuFixture {
         Expect-Failure { Upload-Fixture } 'failed'
         $lines = @(Get-Content -LiteralPath $log)
         Assert-True ($lines[-1] -match "\|$scenario(?:\||$)") "Continued after $scenario failure"
+        Reset-Log $scenario
+        $exitCode = 0
+        try { Upload-Fixture } catch { $exitCode = $_.Exception.Data['ExitCode'] }
+        Assert-True ($exitCode -eq 7) "Lost native exit code for $scenario"
+        $script:passed++
     }
+    Reset-Log ''
+    Expect-Failure { Invoke-DfuUpload -Firmware $firmware -ToolPath $fixture -ExpectedTarget @{Target='at32uc3b0256:1,8';DeviceId=$script:pnp[0].InstanceId} } 'target changed after automatic'
+    Assert-True (-not ((Get-Content -Raw $log) -match '\|(erase|flash|launch)')) 'Changed automatic target reached erase'
     Reset-Log ''
     $script:swapAfterErase = $true
     Expect-Failure { Upload-Fixture } 'device changed'
